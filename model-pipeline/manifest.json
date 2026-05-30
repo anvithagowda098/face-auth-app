@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "models": {
+    "detector": {
+      "file": "blazeface_short_range.tflite",
+      "size_mb": 1.4
+    },
+    "liveness": {
+      "file": "feathernet_b.tflite",
+      "size_mb": 0.055116
+    },
+    "recognizer": {
+      "file": "mobilefacenet_s_int8.tflite",
+      "size_mb": 14.64946
+    }
+  },
+  "total_mb": 16.1,
+  "target_mb": 20.0,
+  "under_target": true
+}

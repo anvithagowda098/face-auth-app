@@ -48,27 +48,32 @@ def norm_crop(img_bgr, landmarks, image_size=112):
 
 class InsightFaceAligner:
     """
-    Raw image -> aligned crop, using insightface's detector for the 5 landmarks.
+    Raw image -> aligned 112x112 crop, using a LOCAL insightface detector ONNX
+    for the 5 landmarks (no auto-download — works on locked-down boxes).
     Requires: pip install insightface onnxruntime
-    (Picks the largest detected face. Returns None if no face is found.)
+    Fetch the detector first (get_model_hf.py grabs det_500m.onnx into weights/).
     """
-    def __init__(self, det_size=640, ctx_id=0):
-        from insightface.app import FaceAnalysis
-        self.app = FaceAnalysis(allowed_modules=["detection"])
-        self.app.prepare(ctx_id=ctx_id, det_size=(det_size, det_size))
+    def __init__(self, det_onnx="weights/det_500m.onnx", det_size=640):
+        from insightface.model_zoo import model_zoo
+        import os
+        if not os.path.exists(det_onnx):
+            raise FileNotFoundError(
+                f"{det_onnx} not found — run get_model_hf.py to fetch the detector")
+        self.det = model_zoo.get_model(det_onnx)
+        self.det.prepare(ctx_id=-1, input_size=(det_size, det_size))  # ctx_id=-1 = CPU
 
     def align(self, img_bgr, image_size=112):
-        faces = self.app.get(img_bgr)
-        if not faces:
+        bboxes, kpss = self.det.detect(img_bgr, max_num=0, metric="default")
+        if kpss is None or len(kpss) == 0:
             return None
-        f = max(faces, key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]))
-        return norm_crop(img_bgr, f.kps, image_size)
+        areas = (bboxes[:, 2] - bboxes[:, 0]) * (bboxes[:, 3] - bboxes[:, 1])
+        return norm_crop(img_bgr, kpss[int(areas.argmax())], image_size)
 
 
-def build_aligner(kind):
+def build_aligner(kind, det_onnx="weights/det_500m.onnx"):
     """kind: 'none' (pre-aligned data) or 'insightface' (raw images)."""
     if kind in (None, "none"):
         return None
     if kind == "insightface":
-        return InsightFaceAligner()
+        return InsightFaceAligner(det_onnx=det_onnx)
     raise ValueError(f"unknown aligner '{kind}'")

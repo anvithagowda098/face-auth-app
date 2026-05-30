@@ -1,0 +1,35 @@
+{
+  "fp32": {
+    "tflite": "out/recognizer_fp32.tflite",
+    "size_mb": 4.79,
+    "latency": {
+      "mean_ms": 2.07,
+      "p50_ms": 2.13,
+      "p95_ms": 2.34,
+      "p99_ms": 2.35,
+      "runs": 100,
+      "note": "desktop/CPU timing; not a phone number"
+    },
+    "size_vs_fp32": 1.0
+  },
+  "fp16": {
+    "tflite": "out/recognizer_fp16.tflite",
+    "size_mb": 2.41,
+    "error": "tflite/kernels/conv.cc:360 input_type == kTfLiteFloat32 || input_type == kTfLiteUInt8 || input_type == kTfLiteInt8 || input_type == kTfLiteInt16 was not true.Node number 1 (CONV_2D) failed to prepare.",
+    "note": "could not load on CPU \u2014 likely a true-fp16 graph needing a GPU/NNAPI delegate; file size is valid, CPU runtime skipped",
+    "size_vs_fp32": 1.99
+  },
+  "int8_full": {
+    "tflite": "out/recognizer_int8_full.tflite",
+    "size_mb": 1.4,
+    "latency": {
+      "mean_ms": 18.74,
+      "p50_ms": 19.19,
+      "p95_ms": 20.3,
+      "p99_ms": 20.73,
+      "runs": 100,
+      "note": "desktop/CPU timing; not a phone number"
+    },
+    "size_vs_fp32": 3.43
+  }
+}

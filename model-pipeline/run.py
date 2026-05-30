@@ -47,7 +47,7 @@ def main():
     if args.precisions:
         precisions = args.precisions
     elif args.calib:
-        precisions = ["fp32", "fp16", "int8_dynamic", "int8_full"]
+        precisions = ["fp32", "fp16", "int8_dynamic", "int8_full", "int16x8"]
     else:
         precisions = ["fp32", "fp16"]
     if any(p in NEEDS_CALIB for p in precisions) and not args.calib:

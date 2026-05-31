@@ -40,7 +40,7 @@ except ImportError:
 # preprocessing (must match training/calibration)
 # ----------------------------------------------------------------------
 
-def load_crop(path, size=112, mean=127.5, std=128.0, to_rgb=True, aligner=None):
+def load_crop(path, size=112, mean=127.5, std=127.5, to_rgb=True, aligner=None):
     """
     Returns NHWC float32. If aligner is None the image is assumed PRE-ALIGNED
     and simply resized (correct for aligned LFW etc.). If an aligner is given,
@@ -219,14 +219,21 @@ def benchmark_accuracy(embedder, pairs, aligner=None):
 # main
 # ----------------------------------------------------------------------
 
-def run_one(tflite_path, pairs, do_latency=True):
-    emb = TFLiteEmbedder(tflite_path)
-    size_mb = Path(tflite_path).stat().st_size / 1e6
-    out = {"tflite": str(tflite_path), "size_mb": round(size_mb, 2)}
+def run_one(tflite_path, pairs, do_latency=True, aligner=None):
+    size_mb = round(Path(tflite_path).stat().st_size / 1e6, 2)
+    out = {"tflite": str(tflite_path), "size_mb": size_mb}
+    try:
+        emb = TFLiteEmbedder(tflite_path)
+    except Exception as e:
+        last = str(e).strip().splitlines()[-1] if str(e).strip() else repr(e)
+        out["error"] = last
+        out["note"] = ("could not load on CPU — likely a true-fp16 graph needing a "
+                       "GPU/NNAPI delegate; file size is valid, CPU runtime skipped")
+        return out
     if do_latency:
         out["latency"] = benchmark_latency(emb)
     if pairs:
-        out["accuracy"] = benchmark_accuracy(emb, pairs)
+        out["accuracy"] = benchmark_accuracy(emb, pairs, aligner=aligner)
     return out
 
 

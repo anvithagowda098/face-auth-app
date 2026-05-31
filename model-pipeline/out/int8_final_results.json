@@ -1,0 +1,71 @@
+{
+  "fp32": {
+    "path": "weights/w600k_mbf.onnx",
+    "size_mb": 13.62,
+    "latency": {
+      "mean_ms": 13.51,
+      "p95_ms": 16.06
+    },
+    "accuracy": {
+      "n_pairs": 992,
+      "n_skipped": 8,
+      "best_accuracy": 0.997,
+      "best_threshold": 0.227,
+      "EER": 0.006,
+      "genuine_mean": 0.6066,
+      "impostor_mean": 0.0015,
+      "TAR@FAR=1e-02": 0.994,
+      "thr@FAR=1e-02": 0.1582,
+      "TAR@FAR=1e-03": 0.994,
+      "thr@FAR=1e-03": 0.2001,
+      "TAR@FAR=1e-04": 0.994,
+      "thr@FAR=1e-04": 0.2001
+    }
+  },
+  "int8_dynamic": {
+    "path": "weights/w600k_mbf_int8_dynamic.onnx",
+    "size_mb": 3.52,
+    "latency": {
+      "mean_ms": 163.95,
+      "p95_ms": 289.39
+    },
+    "accuracy": {
+      "n_pairs": 992,
+      "n_skipped": 8,
+      "best_accuracy": 0.997,
+      "best_threshold": 0.2597,
+      "EER": 0.006,
+      "genuine_mean": 0.6012,
+      "impostor_mean": 0.0156,
+      "TAR@FAR=1e-02": 0.996,
+      "thr@FAR=1e-02": 0.179,
+      "TAR@FAR=1e-03": 0.994,
+      "thr@FAR=1e-03": 0.191,
+      "TAR@FAR=1e-04": 0.994,
+      "thr@FAR=1e-04": 0.191
+    }
+  },
+  "int8_static": {
+    "path": "weights/w600k_mbf_int8_static.onnx",
+    "size_mb": 3.68,
+    "latency": {
+      "mean_ms": 28.62,
+      "p95_ms": 35.43
+    },
+    "accuracy": {
+      "n_pairs": 992,
+      "n_skipped": 8,
+      "best_accuracy": 0.997,
+      "best_threshold": 0.2247,
+      "EER": 0.006,
+      "genuine_mean": 0.5891,
+      "impostor_mean": 0.0035,
+      "TAR@FAR=1e-02": 0.994,
+      "thr@FAR=1e-02": 0.1569,
+      "TAR@FAR=1e-03": 0.994,
+      "thr@FAR=1e-03": 0.2183,
+      "TAR@FAR=1e-04": 0.994,
+      "thr@FAR=1e-04": 0.2183
+    }
+  }
+}

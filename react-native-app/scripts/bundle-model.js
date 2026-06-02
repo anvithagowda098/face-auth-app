@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * bundle-model.js — copy the deployable int8 recognizer into the native asset
- * locations so it ships inside the app binary. Run after `npm run bootstrap`
- * (which generates android/ and ios/) and any time the model is re-exported.
+ * locations so it ships inside the app binary. Run AFTER the android/ and ios/
+ * projects have been generated (Step 1 in docs/INTEGRATION.md) and any time the
+ * model is re-exported.
  *
- *   node scripts/bundle-model.js
+ *   npm run bundle:model      # i.e. node scripts/bundle-model.js
  *
  * Source of truth is model-pipeline/weights/w600k_mbf_int8_static.onnx — the
  * artifact chosen in the model-pipeline decision (3.68 MB, 99.7% / EER 0.006).

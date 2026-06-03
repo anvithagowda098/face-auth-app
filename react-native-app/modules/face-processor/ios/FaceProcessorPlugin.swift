@@ -5,10 +5,8 @@
  * { capture: true } an ArcFace-aligned 112x112 RGB crop returned as base64,
  * using the same closed-form similarity transform as src/core/geometry.ts.
  *
- * Placement (after bootstrap): add to the iOS target and expose via the .m
- * macro below. Pods:
- *   pod 'GoogleMLKit/FaceDetection'
- *   (VisionCamera + worklets-core via autolinking)
+ * Registered by FaceProcessorModule (Expo OnCreate). Pods (see podspec):
+ *   GoogleMLKit/FaceDetection, VisionCamera, ExpoModulesCore
  *
  * Performance note: same as Android — for production, run detection on a
  * downscaled frame and reuse buffers.
@@ -19,7 +17,6 @@ import VisionCamera
 import MLKitVision
 import MLKitFaceDetection
 import CoreGraphics
-import Accelerate
 
 private let INPUT = 112
 

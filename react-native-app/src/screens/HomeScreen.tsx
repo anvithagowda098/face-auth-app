@@ -5,15 +5,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, RefreshControl, Pressable } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Screen, Text, Card, Button, StatTile, Badge, Icon } from '../ui';
 import { palette, spacing, radius } from '../theme';
 import { OfflineDB, type DashboardStats } from '../db/OfflineDB';
 import { syncManager, type SyncStatus } from '../sync/SyncManager';
-import type { RootStackParamList } from '../navigation';
+import type { ScreenProps } from '../navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = ScreenProps<'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
   const [stats, setStats] = useState<DashboardStats | null>(null);

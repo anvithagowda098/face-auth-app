@@ -7,7 +7,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable } from 'react-native';
 import { Camera } from 'react-native-vision-camera';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import FaceCamera, { type FaceCameraHandle } from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
@@ -17,9 +16,9 @@ import { FaceAuthService, qualityReason, type EnrollOutcome } from '../engine/Fa
 import { ENROLL_SHOTS } from '../core/constants';
 import type { DetectedFace } from '../core/types';
 import type { FaceStatus } from '../camera/types';
-import type { RootStackParamList } from '../navigation';
+import type { ScreenProps } from '../navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Enrol'>;
+type Props = ScreenProps<'Enrol'>;
 type Phase = 'form' | 'capture' | 'saving' | 'done' | 'error';
 
 const SHOT_PROMPTS = [

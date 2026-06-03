@@ -10,7 +10,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Camera } from 'react-native-vision-camera';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import FaceCamera, { type FaceCameraHandle } from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
@@ -22,9 +21,9 @@ import { FaceAuthService, type VerifyOutcome } from '../engine/FaceAuthService';
 import { LivenessSession, pickChallenges } from '../engine/LivenessEngine';
 import { MIN_FACE_CONFIDENCE, MIN_FACE_RATIO } from '../core/constants';
 import type { FaceStatus } from '../camera/types';
-import type { RootStackParamList } from '../navigation';
+import type { ScreenProps } from '../navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Verify'>;
+type Props = ScreenProps<'Verify'>;
 type Phase = 'searching' | 'liveness' | 'verifying' | 'done' | 'error';
 
 export default function VerifyScreen({ route, navigation }: Props) {

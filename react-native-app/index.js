@@ -1,10 +1,11 @@
 /**
- * Entry point. The crypto polyfill must be imported before anything that uses
- * crypto.getRandomValues (uuid, hmac key generation, device id).
+ * Entry point (Expo). registerRootComponent calls AppRegistry.registerComponent
+ * and sets up the dev-client / native root for both Expo Go-less dev builds and
+ * release builds.
+ *
+ * No crypto polyfill needed: ids/keys use expo-crypto (getRandomBytes / randomUUID).
  */
-import 'react-native-get-random-values';
-import { AppRegistry } from 'react-native';
+import { registerRootComponent } from 'expo';
 import App from './App';
-import { name as appName } from './app.json';
 
-AppRegistry.registerComponent(appName, () => App);
+registerRootComponent(App);

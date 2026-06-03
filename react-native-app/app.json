@@ -1,4 +1,34 @@
 {
-  "name": "EdgeFaceSentinel",
-  "displayName": "Sentinel"
+  "expo": {
+    "name": "Sentinel",
+    "slug": "edge-face-sentinel",
+    "scheme": "sentinel",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "backgroundColor": "#0B0F14",
+    "ios": {
+      "bundleIdentifier": "com.nhai.edgefacesentinel",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to authenticate toll-plaza workers by face."
+      }
+    },
+    "android": {
+      "package": "com.nhai.edgefacesentinel",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "plugins": [
+      "onnxruntime-react-native",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Used to authenticate toll-plaza workers by face.",
+          "enableFrameProcessors": true,
+          "disableMicrophonePermission": true
+        }
+      ]
+    ]
+  }
 }

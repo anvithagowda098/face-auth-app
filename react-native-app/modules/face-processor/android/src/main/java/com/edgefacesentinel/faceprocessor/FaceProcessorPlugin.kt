@@ -7,20 +7,16 @@
  * (same closed-form similarity transform as src/core/geometry.ts, validated to
  * machine precision against skimage) and returns the RGB bytes as base64.
  *
- * Placement (after bootstrap): copy to
- *   android/app/src/main/java/com/edgefacesentinel/FaceProcessorPlugin.kt
- * and register it (see FaceProcessorPackage / INTEGRATION.md).
- *
- * Gradle deps:
+ * Registered by FaceProcessorModule (Expo OnCreate). Gradle deps live in this
+ * module's build.gradle:
  *   implementation 'com.google.mlkit:face-detection:16.1.6'
- *   (vision-camera + worklets-core are autolinked)
+ *   (vision-camera + worklets-core are autolinked into the app)
  *
- * Note on performance: this reference converts the YUV frame via YuvImage for
- * clarity. For production, downscale the analysis frame (e.g. 720p) and reuse a
- * bitmap buffer; ML Kit + warp then run comfortably within the per-frame budget.
+ * Performance: this reference converts the YUV frame via YuvImage for clarity.
+ * For production, downscale the analysis frame and reuse a bitmap buffer.
  */
 
-package com.edgefacesentinel
+package com.edgefacesentinel.faceprocessor
 
 import android.graphics.*
 import android.util.Base64
@@ -34,7 +30,6 @@ import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin
 import com.mrousavy.camera.frameprocessors.VisionCameraProxy
 import com.google.android.gms.tasks.Tasks
 import java.io.ByteArrayOutputStream
-import kotlin.math.sqrt
 
 private const val INPUT = 112
 

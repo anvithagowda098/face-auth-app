@@ -1,14 +1,15 @@
 /**
  * SyncManager.ts — connectivity-aware upload of the local audit log.
  *
- * Watches NetInfo; when the device is online it batches pending access_log rows
- * to the configured endpoint, marks them synced, then purges them (data-
+ * Watches expo-network; when the device is online it batches pending access_log
+ * rows to the configured endpoint, marks them synced, then purges them (data-
  * minimisation requirement). Auth itself never touches the network — this only
- * ships the tamper-evident log when a link is available.
+ * ships the tamper-evident log when a link is available. Settings (endpoint,
+ * device id) live in the OfflineDB `meta` table.
  */
 
-import NetInfo from '@react-native-community/netinfo';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Network from 'expo-network';
+import * as Crypto from 'expo-crypto';
 import { OfflineDB } from '../db/OfflineDB';
 
 export type SyncStatus = 'idle' | 'offline' | 'syncing' | 'synced' | 'error';
@@ -21,24 +22,26 @@ const MAX_RETRIES = 3;
 const RETRY_MS = 5000;
 
 type Listener = (s: { status: SyncStatus; count: number }) => void;
+type Subscription = { remove: () => void };
 
 class SyncManager {
-  private unsub: (() => void) | null = null;
+  private sub: Subscription | null = null;
   private syncing = false;
   private listeners: Listener[] = [];
   private last: SyncStatus = 'idle';
 
   start() {
-    if (this.unsub) return;
-    this.unsub = NetInfo.addEventListener(state => {
-      if (state.isConnected && state.isInternetReachable) this.onConnected();
+    if (this.sub) return;
+    this.sub = Network.addNetworkStateListener(state => {
+      // isInternetReachable can be undefined on some platforms — treat as online.
+      if (state.isConnected && state.isInternetReachable !== false) this.onConnected();
       else this.emit('offline', 0);
     });
   }
 
   stop() {
-    this.unsub?.();
-    this.unsub = null;
+    this.sub?.remove();
+    this.sub = null;
   }
 
   onStatusChange(cb: Listener): () => void {
@@ -53,11 +56,11 @@ class SyncManager {
   }
 
   async setEndpoint(url: string) {
-    await AsyncStorage.setItem(ENDPOINT_KEY, url);
+    await OfflineDB.setMeta(ENDPOINT_KEY, url);
   }
 
   private async getEndpoint() {
-    return (await AsyncStorage.getItem(ENDPOINT_KEY)) || DEFAULT_ENDPOINT;
+    return (await OfflineDB.getMeta(ENDPOINT_KEY)) || DEFAULT_ENDPOINT;
   }
 
   private async onConnected() {
@@ -94,7 +97,7 @@ class SyncManager {
       const purged = await OfflineDB.purgeSynced();
       this.emit('synced', total);
       if (__DEV__) console.log(`[sync] synced=${total} purged=${purged}`);
-    } catch (e) {
+    } catch {
       if (retries < MAX_RETRIES) {
         setTimeout(() => {
           this.syncing = false;
@@ -115,12 +118,10 @@ class SyncManager {
   }
 
   private async deviceId() {
-    let id = await AsyncStorage.getItem(DEVICE_KEY);
+    let id = await OfflineDB.getMeta(DEVICE_KEY);
     if (!id) {
-      const bytes = new Uint8Array(6);
-      (globalThis.crypto ?? require('react-native-get-random-values')).getRandomValues?.(bytes);
-      id = 'DEV-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-      await AsyncStorage.setItem(DEVICE_KEY, id);
+      id = 'DEV-' + Crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
+      await OfflineDB.setMeta(DEVICE_KEY, id);
     }
     return id;
   }

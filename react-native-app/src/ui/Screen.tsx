@@ -53,7 +53,7 @@ export default function Screen({
         <ScrollView
           contentContainerStyle={[pad, styles.scroll, contentStyle]}
           showsVerticalScrollIndicator={false}
-          refreshControl={refreshControl}
+          refreshControl={refreshControl as React.ReactElement<any>}
         >
           {children}
         </ScrollView>

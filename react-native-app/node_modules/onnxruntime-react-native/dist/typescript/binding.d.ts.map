@@ -1,0 +1,1 @@
+{"version":3,"file":"binding.d.ts","sourceRoot":"","sources":["../../lib/binding.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAE,MAAM,IAAI,UAAU,EAAE,MAAM,OAAO,CAAC;AAElD,eAAO,MAAM,MAAM,KAA4B,CAAC;AAEhD,OAAO,CAAC,MAAM,CAAC;IACb,IAAI,MAAM,EAAE,UAAU,CAAC;CACxB;AAMD,eAAO,MAAM,MAAM,YAShB,CAAC"}

@@ -106,7 +106,7 @@ const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamera(
       runAtTargetFps(fps, () => {
         'worklet';
         if (!plugin) return;
-        const res = plugin.call(frame, { capture: captureWanted.value }) as
+        const res = plugin.call(frame, { capture: captureWanted.value }) as unknown as
           | FaceStatus
           | null;
         if (res) onStatusJS(res);

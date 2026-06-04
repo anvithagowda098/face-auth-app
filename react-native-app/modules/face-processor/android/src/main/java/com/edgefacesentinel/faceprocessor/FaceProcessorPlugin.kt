@@ -50,7 +50,7 @@ class FaceProcessorPlugin(proxy: VisionCameraProxy, options: Map<String, Any>?) 
       .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
       .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
       .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-      .setMinFaceSize(0.15f)
+      .setMinFaceSize(0.10f)
       .build()
   )
 

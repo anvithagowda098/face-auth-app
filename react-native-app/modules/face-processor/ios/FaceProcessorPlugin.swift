@@ -35,7 +35,7 @@ public class FaceProcessorPlugin: FrameProcessorPlugin {
     opts.performanceMode = .fast
     opts.landmarkMode = .all
     opts.classificationMode = .all
-    opts.minFaceSize = 0.15
+    opts.minFaceSize = 0.10
     detector = FaceDetector.faceDetector(options: opts)
     super.init(proxy: proxy, options: options)
   }

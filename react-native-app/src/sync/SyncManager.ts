@@ -14,15 +14,30 @@ import { OfflineDB } from '../db/OfflineDB';
 
 export type SyncStatus = 'idle' | 'offline' | 'syncing' | 'synced' | 'error';
 
+/** Result of one sync attempt — surfaced to the UI by forceSync(). */
+export interface SyncResult {
+  ok: boolean;
+  synced: number;
+  purged: number;
+  error?: string;
+}
+
 const ENDPOINT_KEY = 'sync_endpoint';
 const DEVICE_KEY = 'device_id';
-const DEFAULT_ENDPOINT = 'https://example.invalid/v1/sync'; // configure per deployment
+// Unset by default — the operator configures the AWS endpoint at runtime
+// (Home → Sync settings). A blank/placeholder endpoint fails fast with a clear
+// message instead of throwing a confusing DNS error.
+const PLACEHOLDER_ENDPOINT = 'https://example.invalid/v1/sync';
 const BATCH = 50;
 const MAX_RETRIES = 3;
 const RETRY_MS = 5000;
 
 type Listener = (s: { status: SyncStatus; count: number }) => void;
 type Subscription = { remove: () => void };
+
+function isConfigured(url: string | null): url is string {
+  return !!url && url !== PLACEHOLDER_ENDPOINT && /^https?:\/\//i.test(url);
+}
 
 class SyncManager {
   private sub: Subscription | null = null;
@@ -51,32 +66,55 @@ class SyncManager {
     };
   }
 
-  forceSync() {
-    return this.doSync();
+  /** Manual sync (from the UI). Resolves with a visible, structured result. */
+  forceSync(): Promise<SyncResult> {
+    return this.runSync();
   }
 
   async setEndpoint(url: string) {
-    await OfflineDB.setMeta(ENDPOINT_KEY, url);
+    await OfflineDB.setMeta(ENDPOINT_KEY, url.trim());
   }
 
-  private async getEndpoint() {
-    return (await OfflineDB.getMeta(ENDPOINT_KEY)) || DEFAULT_ENDPOINT;
+  /** The configured endpoint, or null if none/placeholder is set. */
+  async getEndpoint(): Promise<string | null> {
+    const url = await OfflineDB.getMeta(ENDPOINT_KEY);
+    return isConfigured(url) ? url : null;
   }
 
   private async onConnected() {
     if (this.syncing) return;
+    if (!(await this.getEndpoint())) return; // nothing to do until configured
     const pending = await OfflineDB.getPendingLogs(1);
-    if (pending.length > 0) this.doSync();
+    if (pending.length > 0) this.runWithRetry();
   }
 
-  private async doSync(retries = 0): Promise<{ synced: number }> {
-    if (this.syncing) return { synced: 0 };
+  /** Auto path: retry transient failures a few times in the background. */
+  private async runWithRetry(n = 0) {
+    const r = await this.runSync();
+    if (!r.ok && n < MAX_RETRIES && r.error !== 'no-endpoint') {
+      setTimeout(() => this.runWithRetry(n + 1), RETRY_MS);
+    }
+  }
+
+  private async runSync(): Promise<SyncResult> {
+    if (this.syncing) return { ok: false, synced: 0, purged: 0, error: 'already syncing' };
+
+    const endpoint = await this.getEndpoint();
+    if (!endpoint) {
+      this.emit('error', 0);
+      return {
+        ok: false,
+        synced: 0,
+        purged: 0,
+        error: 'no-endpoint',
+      };
+    }
+
     this.syncing = true;
     this.emit('syncing', 0);
 
     let total = 0;
     try {
-      const endpoint = await this.getEndpoint();
       const deviceId = await this.deviceId();
       let batch: Array<Record<string, unknown>>;
       do {
@@ -97,19 +135,13 @@ class SyncManager {
       const purged = await OfflineDB.purgeSynced();
       this.emit('synced', total);
       if (__DEV__) console.log(`[sync] synced=${total} purged=${purged}`);
-    } catch {
-      if (retries < MAX_RETRIES) {
-        setTimeout(() => {
-          this.syncing = false;
-          this.doSync(retries + 1);
-        }, RETRY_MS);
-        return { synced: total };
-      }
+      return { ok: true, synced: total, purged };
+    } catch (e) {
       this.emit('error', total);
+      return { ok: false, synced: total, purged: 0, error: (e as Error).message };
     } finally {
       this.syncing = false;
     }
-    return { synced: total };
   }
 
   private emit(status: SyncStatus, count: number) {

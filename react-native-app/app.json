@@ -5,7 +5,6 @@
     "scheme": "sentinel",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "backgroundColor": "#0B0F14",
     "ios": {
@@ -17,6 +16,7 @@
     },
     "android": {
       "package": "com.nhai.edgefacesentinel",
+      "edgeToEdgeEnabled": false,
       "permissions": ["android.permission.CAMERA"]
     },
     "plugins": [

@@ -17,6 +17,7 @@ import {
   StatusBar as RNStatusBar,
   type ViewStyle,
   type StyleProp,
+  type RefreshControlProps,
 } from 'react-native';
 import { palette, spacing } from '../theme';
 
@@ -30,7 +31,7 @@ interface Props {
   scroll?: boolean;
   padded?: boolean;
   edges?: readonly Edge[];
-  refreshControl?: React.ReactElement;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
   contentStyle?: StyleProp<ViewStyle>;
 }
 

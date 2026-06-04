@@ -42,7 +42,33 @@ export const MIN_MATCH_MARGIN = 0.06;
 /** Enrolment quality gates (applied per shot before it is accepted). */
 export const ENROLL_SHOTS = 5;
 export const MIN_FACE_CONFIDENCE = 0.7;
-export const MIN_FACE_RATIO = 0.12; // face must fill >=12% of frame (not too far)
+
+/**
+ * Face-size gates, expressed as the detected bounding-box AREA / frame AREA.
+ *
+ * NOTE: this is an *area* fraction, so the linear span is √ratio. 0.05 area
+ * means the face spans ~22% of the frame in each dimension — a comfortable
+ * arm's-length selfie. The old 0.12 demanded ~35%×35%, which forced the phone
+ * uncomfortably close (the "won't recognise unless I'm right up against it" bug).
+ */
+export const MIN_FACE_RATIO = 0.05; // too far below this
+export const MAX_FACE_RATIO = 0.6; // too close above this (face clipped by the oval)
+
 export const MAX_ABS_YAW = 25; // degrees — roughly frontal
 export const MAX_ABS_PITCH = 20;
 export const MAX_ABS_ROLL = 25;
+
+/**
+ * Enrolment auto-capture: once a good frontal frame is held, shots are grabbed
+ * automatically this far apart (ms). The small gap lets natural micro-motion
+ * give the template a little variety without demanding fake head turns.
+ */
+export const ENROLL_SHOT_INTERVAL_MS = 700;
+
+/**
+ * Duplicate-identity guard at enrol time. A freshly built template is matched
+ * against the existing gallery; if it resembles a *different* enrolled worker at
+ * or above this cosine, enrolment is blocked (one face must not become two IDs).
+ * Set comfortably above impostor noise and below the genuine mean.
+ */
+export const DUPLICATE_ENROLL_COSINE = 0.45;

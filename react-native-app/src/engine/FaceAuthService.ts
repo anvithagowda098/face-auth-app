@@ -15,9 +15,11 @@ import { averageEmbeddings, matchGallery, verifyAgainst } from '../core/match';
 import {
   MIN_FACE_CONFIDENCE,
   MIN_FACE_RATIO,
+  MAX_FACE_RATIO,
   MAX_ABS_YAW,
   MAX_ABS_PITCH,
   MAX_ABS_ROLL,
+  DUPLICATE_ENROLL_COSINE,
 } from '../core/constants';
 import { OfflineDB } from '../db/OfflineDB';
 import type { DetectedFace, Embedding, MatchResult } from '../core/types';
@@ -39,10 +41,47 @@ export interface EnrollOutcome {
 export function qualityReason(face: DetectedFace): string | null {
   if (face.confidence < MIN_FACE_CONFIDENCE) return 'Hold steady — face not clearly detected';
   if (face.faceRatio < MIN_FACE_RATIO) return 'Move closer';
+  if (face.faceRatio > MAX_FACE_RATIO) return 'Move back a little';
   if (Math.abs(face.yaw) > MAX_ABS_YAW) return 'Look straight ahead';
   if (Math.abs(face.pitch) > MAX_ABS_PITCH) return 'Keep your head level';
   if (Math.abs(face.roll) > MAX_ABS_ROLL) return "Don't tilt your head";
   return null;
+}
+
+/**
+ * Live framing guidance from a streaming FaceStatus (looser than the capture
+ * gate — meant for the on-screen coach line, not for accepting a shot). Returns
+ * a short instruction, or null when the framing is good enough to capture.
+ *
+ * `s` is a FaceStatus-shaped object; we read only the numeric fields so the core
+ * engine needn't import the camera types.
+ */
+export interface FramingSignal {
+  found: boolean;
+  confidence: number;
+  faceRatio: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  leftEyeOpen: number;
+  rightEyeOpen: number;
+}
+
+export function framingHint(s: FramingSignal): string | null {
+  if (!s.found || s.confidence < MIN_FACE_CONFIDENCE) return 'Center your face in the oval';
+  if (s.faceRatio < MIN_FACE_RATIO) return 'Move closer';
+  if (s.faceRatio > MAX_FACE_RATIO) return 'Move back a little';
+  if (Math.abs(s.yaw) > MAX_ABS_YAW) return 'Look straight ahead';
+  if (Math.abs(s.pitch) > MAX_ABS_PITCH) return 'Keep your head level';
+  if (Math.abs(s.roll) > MAX_ABS_ROLL) return "Don't tilt your head";
+  // Eyes unreadable despite a close, frontal face usually means glare/glasses.
+  if (s.leftEyeOpen < 0 && s.rightEyeOpen < 0) return 'Remove glasses or add light';
+  return null;
+}
+
+/** True when a streaming frame is good enough to auto-capture an enrol shot. */
+export function isFrameCaptureReady(s: FramingSignal): boolean {
+  return framingHint(s) === null;
 }
 
 /** A 0..1 quality score for logging (1 = frontal, close, confident). */
@@ -79,6 +118,20 @@ export const FaceAuthService = {
 
     const template = averageEmbeddings(embeddings);
     const cohesion = meanPairwiseCosine(embeddings);
+
+    // Duplicate-identity guard: one face must not become two worker IDs. Match
+    // the new template against everyone *except* this same ID (re-enrolment of
+    // the same worker is allowed and simply updates their template).
+    const gallery = (await OfflineDB.getGallery()).filter(g => g.workerId !== workerId);
+    if (gallery.length > 0) {
+      const dup = matchGallery(template, gallery, DUPLICATE_ENROLL_COSINE, 0);
+      if (dup.matched && dup.workerId) {
+        throw new Error(
+          `This face is already enrolled as ${dup.workerId} ` +
+            `(similarity ${(dup.score * 100).toFixed(0)}%). One worker per face.`,
+        );
+      }
+    }
 
     await OfflineDB.enrollWorker(workerId, template, embeddings.length, {
       ...metadata,

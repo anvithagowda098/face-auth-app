@@ -29,7 +29,7 @@ export default function App() {
     // native model isn't present (e.g. running before a build) we still proceed;
     // capture() surfaces a clear error at use time.
     FaceAuthService.init()
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setBooted(true));
   }, []);
 

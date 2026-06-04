@@ -1,7 +1,11 @@
 /**
- * EnrolScreen — capture N aligned shots of a worker, embed each, average into a
- * template, and persist. Quality is gated per shot so a bad frame never enters
- * the template; the enrol cohesion score is surfaced at the end.
+ * EnrolScreen — frontal auto-capture. The worker holds still and looks at the
+ * camera; once framing is good the app grabs ENROLL_SHOTS aligned shots
+ * automatically (spaced by ENROLL_SHOT_INTERVAL_MS for a little natural
+ * variety), embeds each, averages into a template, and persists. Every shot is
+ * quality-gated, and FaceAuthService.enroll blocks a face that is already
+ * enrolled under another ID. No fake "turn left/right" prompts — ArcFace
+ * alignment normalises pose, so honest frontal shots give the best template.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,8 +16,14 @@ import FaceCamera, { type FaceCameraHandle } from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
 import { Screen, Text, Button, Icon, ProgressRing } from '../ui';
 import { palette, spacing, radius } from '../theme';
-import { FaceAuthService, qualityReason, type EnrollOutcome } from '../engine/FaceAuthService';
-import { ENROLL_SHOTS } from '../core/constants';
+import {
+  FaceAuthService,
+  qualityReason,
+  framingHint,
+  isFrameCaptureReady,
+  type EnrollOutcome,
+} from '../engine/FaceAuthService';
+import { ENROLL_SHOTS, ENROLL_SHOT_INTERVAL_MS } from '../core/constants';
 import type { DetectedFace } from '../core/types';
 import type { FaceStatus } from '../camera/types';
 import type { ScreenProps } from '../navigation';
@@ -21,60 +31,91 @@ import type { ScreenProps } from '../navigation';
 type Props = ScreenProps<'Enrol'>;
 type Phase = 'form' | 'capture' | 'saving' | 'done' | 'error';
 
-const SHOT_PROMPTS = [
-  'Look straight ahead',
-  'Turn slightly left',
-  'Turn slightly right',
-  'Tilt head up slightly',
-  'Look straight again',
-];
-
 export default function EnrolScreen({ navigation }: Props) {
   const camera = useRef<FaceCameraHandle>(null);
   const [phase, setPhase] = useState<Phase>('form');
   const [workerId, setWorkerId] = useState('');
   const [shots, setShots] = useState<DetectedFace[]>([]);
-  const [hint, setHint] = useState('');
-  const [live, setLive] = useState(false); // a usable face is in frame
-  const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState('Center your face in the oval');
+  const [live, setLive] = useState(false); // framing good enough to capture
   const [result, setResult] = useState<EnrollOutcome | null>(null);
   const [errMsg, setErrMsg] = useState('');
 
+  // Auto-capture bookkeeping kept in refs so the per-frame onStatus stays stable
+  // and never races on stale state.
+  const busyRef = useRef(false);
+  const doneRef = useRef(false);
+  const shotsRef = useRef<DetectedFace[]>([]);
+  const lastShotRef = useRef(0);
+  const workerIdRef = useRef('');
+
   useEffect(() => {
-    if (phase === 'capture') Camera.requestCameraPermission();
-  }, [phase]);
+    if (phase === 'capture') {
+      Camera.requestCameraPermission();
+      // fresh start each time we enter capture
+      busyRef.current = false;
+      doneRef.current = false;
+      shotsRef.current = [];
+      lastShotRef.current = 0;
+      workerIdRef.current = workerId.trim();
+      setShots([]);
+      setHint('Center your face in the oval');
+    }
+  }, [phase, workerId]);
 
-  const onStatus = useCallback((s: FaceStatus) => {
-    setLive(s.found && s.confidence > 0.6 && s.faceRatio > 0.12);
-  }, []);
-
-  const captureShot = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
+  const saveTemplate = useCallback(async (all: DetectedFace[]) => {
+    setPhase('saving');
     try {
-      const face = await camera.current!.capture(5000);
-      const reason = qualityReason(face);
-      if (reason) {
-        setHint(reason);
-        setBusy(false);
-        return;
-      }
-      const next = [...shots, face];
-      setShots(next);
-      setHint('');
-      if (next.length >= ENROLL_SHOTS) {
-        setPhase('saving');
-        const outcome = await FaceAuthService.enroll(workerId.trim(), next);
-        setResult(outcome);
-        setPhase('done');
-      }
+      const outcome = await FaceAuthService.enroll(workerIdRef.current, all);
+      setResult(outcome);
+      setPhase('done');
     } catch (e) {
       setErrMsg((e as Error).message);
       setPhase('error');
-    } finally {
-      setBusy(false);
     }
-  }, [busy, shots, workerId]);
+  }, []);
+
+  // Grab one shot if framing is good, we're not already mid-capture, and enough
+  // time has passed since the last accepted shot. Driven from onStatus.
+  const tryCapture = useCallback(async () => {
+    if (busyRef.current || doneRef.current) return;
+    if (shotsRef.current.length >= ENROLL_SHOTS) return;
+    if (Date.now() - lastShotRef.current < ENROLL_SHOT_INTERVAL_MS) return;
+
+    busyRef.current = true;
+    try {
+      const face = await camera.current!.capture(2500);
+      const reason = qualityReason(face);
+      if (reason) {
+        setHint(reason);
+        return;
+      }
+      lastShotRef.current = Date.now();
+      const next = [...shotsRef.current, face];
+      shotsRef.current = next;
+      setShots(next);
+      if (next.length >= ENROLL_SHOTS) {
+        doneRef.current = true;
+        await saveTemplate(next);
+      }
+    } catch {
+      // capture timed out (no clean face this window) — onStatus retries when
+      // framing is good again.
+    } finally {
+      busyRef.current = false;
+    }
+  }, [saveTemplate]);
+
+  const onStatus = useCallback(
+    (s: FaceStatus) => {
+      if (doneRef.current) return;
+      const ready = isFrameCaptureReady(s);
+      setLive(ready);
+      setHint(framingHint(s) ?? 'Hold still — capturing');
+      if (ready) tryCapture();
+    },
+    [tryCapture],
+  );
 
   // ── form ──────────────────────────────────────────────────────────────────
   if (phase === 'form') {
@@ -96,7 +137,8 @@ export default function EnrolScreen({ navigation }: Props) {
             Enrol worker
           </Text>
           <Text variant="body" color={palette.textSecondary} style={{ marginBottom: spacing.xxl }}>
-            We'll capture {ENROLL_SHOTS} angles to build a robust face template. Nothing leaves the device.
+            Look straight at the camera and hold still — we'll auto-capture {ENROLL_SHOTS} shots to
+            build a robust face template. Nothing leaves the device.
           </Text>
 
           <Text variant="label" color={palette.textSecondary} style={{ marginBottom: spacing.sm }}>
@@ -170,34 +212,32 @@ export default function EnrolScreen({ navigation }: Props) {
 
   // ── capture / saving ──────────────────────────────────────────────────────
   const progress = shots.length / ENROLL_SHOTS;
-  const prompt = SHOT_PROMPTS[Math.min(shots.length, SHOT_PROMPTS.length - 1)];
 
   return (
     <View style={styles.root}>
       <FaceCamera ref={camera} isActive={phase === 'capture'} onStatus={onStatus} />
       <FaceOverlay
         title={workerId}
-        subtitle={`Capture ${shots.length} / ${ENROLL_SHOTS}`}
-        hint={hint || prompt}
-        readiness={live ? 'ready' : 'searching'}
+        subtitle={`Captured ${shots.length} / ${ENROLL_SHOTS}`}
+        hint={phase === 'saving' ? undefined : hint}
+        readiness={phase === 'saving' ? 'ready' : live ? 'ready' : 'searching'}
       />
 
       <View style={styles.captureBar}>
-        <ProgressRing progress={progress} size={84} stroke={5}>
-          <Pressable
-            onPress={captureShot}
-            disabled={busy || phase === 'saving' || !live}
-            style={({ pressed }) => [
-              styles.shutter,
-              (!live || busy) && styles.shutterDisabled,
-              pressed && { transform: [{ scale: 0.94 }] },
-            ]}
-          >
-            <Icon name="face-scan" size={26} color={palette.textInverse} strokeWidth={2} />
-          </Pressable>
+        <ProgressRing progress={progress} size={96} stroke={6}>
+          <View style={styles.count}>
+            <Text variant="h1">{shots.length}</Text>
+            <Text variant="label" color={palette.textSecondary}>
+              / {ENROLL_SHOTS}
+            </Text>
+          </View>
         </ProgressRing>
         <Text variant="label" color={palette.textSecondary} center style={{ marginTop: spacing.md }}>
-          {phase === 'saving' ? 'Building template…' : live ? 'Tap to capture' : 'Looking for a face…'}
+          {phase === 'saving'
+            ? 'Building template…'
+            : live
+              ? 'Auto-capturing — hold still'
+              : 'Center your face to begin'}
         </Text>
       </View>
     </View>
@@ -231,13 +271,5 @@ const styles = StyleSheet.create({
   },
   doneActions: { alignSelf: 'stretch', marginTop: spacing.xl },
   captureBar: { position: 'absolute', bottom: spacing.xxxl, left: 0, right: 0, alignItems: 'center' },
-  shutter: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: palette.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterDisabled: { backgroundColor: palette.borderStrong },
+  count: { alignItems: 'center', justifyContent: 'center' },
 });

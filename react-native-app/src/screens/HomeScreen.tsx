@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, RefreshControl, Pressable } from 'react-native';
+import { View, StyleSheet, RefreshControl, Pressable, TextInput, ActivityIndicator } from 'react-native';
 
 import { Screen, Text, Card, Button, StatTile, Badge, Icon } from '../ui';
 import { palette, spacing, radius } from '../theme';
@@ -141,6 +141,40 @@ function SyncCard({ status, pending }: { status: SyncStatus; pending: number }) 
     error: { tone: 'danger', label: 'Sync failed — will retry', icon: 'alert' },
   };
   const m = map[status];
+
+  const [endpoint, setEndpoint] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    syncManager.getEndpoint().then(url => {
+      setEndpoint(url ?? '');
+      setEditing(!url); // open the field if nothing is configured yet
+    });
+  }, []);
+
+  const saveEndpoint = useCallback(async () => {
+    await syncManager.setEndpoint(endpoint);
+    setEditing(false);
+    setResult(null);
+  }, [endpoint]);
+
+  const doForceSync = useCallback(async () => {
+    setBusy(true);
+    setResult(null);
+    const r = await syncManager.forceSync();
+    setBusy(false);
+    if (r.error === 'no-endpoint') {
+      setEditing(true);
+      setResult({ ok: false, text: 'Set a sync endpoint first' });
+    } else if (r.ok) {
+      setResult({ ok: true, text: `Synced ${r.synced} · purged ${r.purged}` });
+    } else {
+      setResult({ ok: false, text: `Sync failed: ${r.error}` });
+    }
+  }, []);
+
   return (
     <Card style={styles.syncCard}>
       <View style={styles.syncRow}>
@@ -150,11 +184,60 @@ function SyncCard({ status, pending }: { status: SyncStatus; pending: number }) 
         </Text>
         {pending > 0 && <Badge label={`${pending} pending`} tone={m.tone} />}
       </View>
-      <Pressable onPress={() => syncManager.forceSync()} style={styles.syncBtn} hitSlop={6}>
-        <Text variant="label" color={palette.accent}>
-          Force sync now
+
+      {/* Endpoint config */}
+      {editing ? (
+        <View style={styles.syncRow}>
+          <TextInput
+            value={endpoint}
+            onChangeText={setEndpoint}
+            placeholder="https://<api>.amazonaws.com/v1/sync"
+            placeholderTextColor={palette.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            style={styles.endpointInput}
+          />
+          <Pressable onPress={saveEndpoint} hitSlop={6}>
+            <Text variant="label" color={palette.accent}>
+              Save
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable onPress={() => setEditing(true)} style={styles.syncRow} hitSlop={6}>
+          <Icon name="cloud-sync" size={14} color={palette.textMuted} />
+          <Text variant="caption" color={palette.textMuted} numberOfLines={1} style={{ flex: 1 }}>
+            {endpoint}
+          </Text>
+          <Text variant="label" color={palette.accent}>
+            Edit
+          </Text>
+        </Pressable>
+      )}
+
+      {result && (
+        <Text variant="label" color={result.ok ? palette.success : palette.danger}>
+          {result.text}
         </Text>
-        <Icon name="chevron-right" size={16} color={palette.accent} />
+      )}
+
+      <Pressable
+        onPress={doForceSync}
+        disabled={busy}
+        style={[styles.syncBtn, busy && { opacity: 0.6 }]}
+        hitSlop={6}
+      >
+        {busy ? (
+          <ActivityIndicator size="small" color={palette.accent} />
+        ) : (
+          <>
+            <Text variant="label" color={palette.accent}>
+              Force sync now
+            </Text>
+            <Icon name="chevron-right" size={16} color={palette.accent} />
+          </>
+        )}
       </Pressable>
     </Card>
   );
@@ -170,6 +253,17 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.lg },
   syncCard: { gap: spacing.md, marginBottom: spacing.lg },
   syncRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  endpointInput: {
+    flex: 1,
+    backgroundColor: palette.surfaceAlt,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    height: 40,
+    color: palette.text,
+    fontSize: 13,
+  },
   syncBtn: {
     flexDirection: 'row',
     alignItems: 'center',

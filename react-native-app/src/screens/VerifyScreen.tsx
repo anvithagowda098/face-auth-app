@@ -19,7 +19,7 @@ import { Screen, Text, Button, Icon } from '../ui';
 import { palette, spacing } from '../theme';
 import { FaceAuthService, type VerifyOutcome } from '../engine/FaceAuthService';
 import { LivenessSession, pickChallenges } from '../engine/LivenessEngine';
-import { MIN_FACE_CONFIDENCE, MIN_FACE_RATIO } from '../core/constants';
+import { MIN_FACE_CONFIDENCE, MIN_FACE_RATIO, MAX_FACE_RATIO } from '../core/constants';
 import type { FaceStatus } from '../camera/types';
 import type { ScreenProps } from '../navigation';
 
@@ -42,6 +42,16 @@ export default function VerifyScreen({ route, navigation }: Props) {
   const session = useRef(new LivenessSession(challenges));
   const busy = useRef(false);
 
+  // Hysteresis: keep the liveness flow alive across brief face losses (a blink,
+  // a head turn during a challenge) instead of snapping back to 'searching' and
+  // tearing down the prompt strip every frame — that was the "glitching" bug.
+  const phaseRef = useRef<Phase>('searching');
+  const lostRef = useRef(0);
+  const LOST_GRACE = 8; // consecutive missing frames (~0.8s @ 10fps) before reset
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
   useEffect(() => {
     Camera.requestCameraPermission().then(s =>
       setPerm(s === 'granted' ? 'granted' : 'denied'),
@@ -51,6 +61,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
   const runVerify = useCallback(async () => {
     if (busy.current) return;
     busy.current = true;
+    phaseRef.current = 'verifying';
     setPhase('verifying');
     setHint('Hold still — matching');
     try {
@@ -67,33 +78,48 @@ export default function VerifyScreen({ route, navigation }: Props) {
 
   const onStatus = useCallback(
     (s: FaceStatus) => {
-      if (phase === 'verifying' || phase === 'done' || phase === 'error') return;
+      const ph = phaseRef.current;
+      if (ph === 'verifying' || ph === 'done' || ph === 'error') return;
 
-      const hasFace = s.found && s.confidence >= MIN_FACE_CONFIDENCE;
-      if (!hasFace) {
-        setPhase('searching');
-        setHint('Position your face in the frame');
+      // "present" gates only on a framed, close-enough face — NOT on pose, since
+      // turn-left/right challenges legitimately make the face non-frontal.
+      const present =
+        s.found &&
+        s.confidence >= MIN_FACE_CONFIDENCE &&
+        s.faceRatio >= MIN_FACE_RATIO &&
+        s.faceRatio <= MAX_FACE_RATIO;
+
+      if (!present) {
+        lostRef.current += 1;
+        // Within the grace window, ignore the dropout: keep the current prompt
+        // and the liveness session exactly as they were.
+        if (lostRef.current <= LOST_GRACE) return;
+        if (ph !== 'searching') setPhase('searching');
+        setHint(
+          !s.found || s.confidence < MIN_FACE_CONFIDENCE
+            ? 'Position your face in the frame'
+            : s.faceRatio < MIN_FACE_RATIO
+              ? 'Move a little closer'
+              : 'Move back a little',
+        );
         return;
       }
-      if (s.faceRatio < MIN_FACE_RATIO) {
-        setPhase('searching');
-        setHint('Move a little closer');
-        return;
-      }
 
-      // good face -> drive liveness
-      if (phase === 'searching') setPhase('liveness');
+      lostRef.current = 0;
+      if (ph === 'searching') setPhase('liveness');
       const p = session.current.feed(s);
       setLivenessIdx(p.index);
       setHint(p.prompt);
       if (p.done) runVerify();
     },
-    [phase, runVerify],
+    [runVerify],
   );
 
   const reset = useCallback(() => {
     session.current = new LivenessSession(challenges);
     busy.current = false;
+    lostRef.current = 0;
+    phaseRef.current = 'searching';
     setOutcome(null);
     setGranted(null);
     setLivenessIdx(0);

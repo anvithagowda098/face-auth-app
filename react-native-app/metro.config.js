@@ -1,8 +1,10 @@
-// Metro config — Expo defaults plus the model file extension so the .onnx ships
-// as a bundled asset (resolved at runtime via expo-asset in src/core/embedder.ts).
+// Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
 
+/** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
+
 config.resolver.assetExts.push('onnx', 'ort');
+config.transformer.assetPlugins = ["expo-asset/tools/hashAssetFiles"];
 
 module.exports = config;

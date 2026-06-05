@@ -83,6 +83,7 @@ export function warpAndExtractRGB(srcPixels: Uint8Array, width: number, height: 
   const ty = m[5];
 
   const rgb = new Uint8Array(112 * 112 * 3);
+  const planeSize = width * height;
 
   for (let y = 0; y < 112; y++) {
     for (let x = 0; x < 112; x++) {
@@ -95,12 +96,12 @@ export function warpAndExtractRGB(srcPixels: Uint8Array, width: number, height: 
       const ix = Math.max(0, Math.min(Math.floor(srcX), width - 1));
       const iy = Math.max(0, Math.min(Math.floor(srcY), height - 1));
 
-      const srcIdx = (iy * width + ix) * 3; // RGB input
-      const dstIdx = (y * 112 + x) * 3;   // RGB output
+      const srcIdx = (iy * width + ix); // RGB planar input
+      const dstIdx = (y * 112 + x);   // RGB planar output
 
       rgb[dstIdx] = srcPixels[srcIdx];       // R
-      rgb[dstIdx + 1] = srcPixels[srcIdx + 1]; // G
-      rgb[dstIdx + 2] = srcPixels[srcIdx + 2]; // B
+      rgb[dstIdx + (112*112)] = srcPixels[srcIdx + planeSize]; // G
+      rgb[dstIdx + (112*112*2)] = srcPixels[srcIdx + 2*planeSize]; // B
     }
   }
 

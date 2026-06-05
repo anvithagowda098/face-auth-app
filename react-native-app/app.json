@@ -16,7 +16,6 @@
     },
     "android": {
       "package": "com.nhai.edgefacesentinel",
-      "edgeToEdgeEnabled": false,
       "permissions": ["android.permission.CAMERA"]
     },
     "plugins": [

@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Camera } from 'react-native-vision-camera';
+import { useCameraPermission } from 'react-native-vision-camera';
 
 import FaceCamera from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
@@ -29,18 +29,12 @@ export default function VerifyScreen({ route, navigation }: Props) {
   const workerId = route.params?.workerId;
 
   const [granted, setGranted] = useState<boolean | null>(null);
-  const [perm, setPerm] = useState<'unknown' | 'granted' | 'denied'>('unknown');
+  const { hasPermission } = useCameraPermission();
   const [phase, setPhase] = useState<Phase>('searching');
   const [hint, setHint] = useState('Position your face in the frame');
   const [outcome, setOutcome] = useState<VerifyOutcome | null>(null);
   const [livenessIdx, setLivenessIdx] = useState(0);
   const [errMsg, setErrMsg] = useState('');
-
-  useEffect(() => {
-    Camera.requestCameraPermission().then(s =>
-      setPerm(s === 'granted' ? 'granted' : 'denied'),
-    );
-  }, []);
 
   const runVerify = useCallback(async (embeddings: Embedding[], faceQuality: number) => {
     setPhase('verifying');
@@ -56,10 +50,10 @@ export default function VerifyScreen({ route, navigation }: Props) {
     }
   }, [workerId]);
 
-  const onLivenessProgress = (p: LivenessProgress, embeddings: Embedding[], faceQuality: number) => {
+  const onLivenessProgress = (p: LivenessProgress, embeddings?: Embedding[], faceQuality?: number) => {
       setLivenessIdx(p.index);
       setHint(p.prompt);
-      if (p.done) runVerify(embeddings, faceQuality);
+      if (p.done && embeddings !== undefined && faceQuality !== undefined) runVerify(embeddings, faceQuality);
   };
 
   const reset = useCallback(() => {
@@ -70,7 +64,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
     setHint('Position your face in the frame');
   }, []);
 
-  if (perm === 'denied') {
+  if (!hasPermission) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -118,7 +112,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
       {/* liveness strip */}
       {phase === 'liveness' && (
         <View style={styles.bottom}>
-          <LivenessGuide challenges={challenges} index={livenessIdx} />
+          <LivenessGuide challenges={[0,1,2,3,4]} index={livenessIdx} />
         </View>
       )}
 

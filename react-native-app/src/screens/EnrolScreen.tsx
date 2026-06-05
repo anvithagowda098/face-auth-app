@@ -38,11 +38,6 @@ export default function EnrolScreen({ navigation }: Props) {
   const [result, setResult] = useState<EnrollOutcome | null>(null);
   const [errMsg, setErrMsg] = useState('');
 
-  const onStatus = useCallback(() => {
-    // faceRatio must be >= 0.15 because of FrameFaceDetectionOptions
-    setLive(true);
-  }, []);
-
   const captureShot = useCallback(async () => {
     if (busy) return;
     setBusy(true);

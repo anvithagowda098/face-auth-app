@@ -10,9 +10,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable } from 'react-native';
-import { Camera } from 'react-native-vision-camera';
 
-import FaceCamera, { type FaceCameraHandle } from '../camera/FaceCamera';
+import FaceCamera from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
 import { Screen, Text, Button, Icon, ProgressRing } from '../ui';
 import { palette, spacing, radius } from '../theme';
@@ -25,14 +24,12 @@ import {
 } from '../engine/FaceAuthService';
 import { ENROLL_SHOTS, ENROLL_SHOT_INTERVAL_MS } from '../core/constants';
 import type { DetectedFace } from '../core/types';
-import type { FaceStatus } from '../camera/types';
 import type { ScreenProps } from '../navigation';
 
 type Props = ScreenProps<'Enrol'>;
 type Phase = 'form' | 'capture' | 'saving' | 'done' | 'error';
 
 export default function EnrolScreen({ navigation }: Props) {
-  const camera = useRef<FaceCameraHandle>(null);
   const [phase, setPhase] = useState<Phase>('form');
   const [workerId, setWorkerId] = useState('');
   const [shots, setShots] = useState<DetectedFace[]>([]);
@@ -41,30 +38,14 @@ export default function EnrolScreen({ navigation }: Props) {
   const [result, setResult] = useState<EnrollOutcome | null>(null);
   const [errMsg, setErrMsg] = useState('');
 
-  // Auto-capture bookkeeping kept in refs so the per-frame onStatus stays stable
-  // and never races on stale state.
-  const busyRef = useRef(false);
-  const doneRef = useRef(false);
-  const shotsRef = useRef<DetectedFace[]>([]);
-  const lastShotRef = useRef(0);
-  const workerIdRef = useRef('');
+  const onStatus = useCallback(() => {
+    // faceRatio must be >= 0.15 because of FrameFaceDetectionOptions
+    setLive(true);
+  }, []);
 
-  useEffect(() => {
-    if (phase === 'capture') {
-      Camera.requestCameraPermission();
-      // fresh start each time we enter capture
-      busyRef.current = false;
-      doneRef.current = false;
-      shotsRef.current = [];
-      lastShotRef.current = 0;
-      workerIdRef.current = workerId.trim();
-      setShots([]);
-      setHint('Center your face in the oval');
-    }
-  }, [phase, workerId]);
-
-  const saveTemplate = useCallback(async (all: DetectedFace[]) => {
-    setPhase('saving');
+  const captureShot = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
     try {
       const outcome = await FaceAuthService.enroll(workerIdRef.current, all);
       setResult(outcome);
@@ -215,7 +196,7 @@ export default function EnrolScreen({ navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <FaceCamera ref={camera} isActive={phase === 'capture'} onStatus={onStatus} />
+      <FaceCamera isActive={phase === 'capture'} onStatus={onStatus} />
       <FaceOverlay
         title={workerId}
         subtitle={`Captured ${shots.length} / ${ENROLL_SHOTS}`}
@@ -273,3 +254,4 @@ const styles = StyleSheet.create({
   captureBar: { position: 'absolute', bottom: spacing.xxxl, left: 0, right: 0, alignItems: 'center' },
   count: { alignItems: 'center', justifyContent: 'center' },
 });
+/* vi: set et sw=2: */

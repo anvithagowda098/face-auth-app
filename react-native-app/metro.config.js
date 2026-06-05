@@ -4,7 +4,6 @@ const { getDefaultConfig } = require('expo/metro-config');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-config.resolver.assetExts.push('onnx', 'ort');
-config.transformer.assetPlugins = ["expo-asset/tools/hashAssetFiles"];
+config.resolver.assetExts.push('tflite');
 
 module.exports = config;

@@ -7,28 +7,26 @@
  * 1:N identify across the gallery.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Camera } from 'react-native-vision-camera';
 
-import FaceCamera, { type FaceCameraHandle } from '../camera/FaceCamera';
+import FaceCamera from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
 import LivenessGuide from '../components/LivenessGuide';
 import ResultSheet from '../components/ResultSheet';
 import { Screen, Text, Button, Icon } from '../ui';
 import { palette, spacing } from '../theme';
 import { FaceAuthService, type VerifyOutcome } from '../engine/FaceAuthService';
-import { LivenessSession, pickChallenges } from '../engine/LivenessEngine';
-import { MIN_FACE_CONFIDENCE, MIN_FACE_RATIO, MAX_FACE_RATIO } from '../core/constants';
-import type { FaceStatus } from '../camera/types';
 import type { ScreenProps } from '../navigation';
+import { type LivenessProgress } from '../engine/LivenessEngine';
+import { type Embedding } from '../core/types';
 
 type Props = ScreenProps<'Verify'>;
 type Phase = 'searching' | 'liveness' | 'verifying' | 'done' | 'error';
 
 export default function VerifyScreen({ route, navigation }: Props) {
   const workerId = route.params?.workerId;
-  const camera = useRef<FaceCameraHandle>(null);
 
   const [granted, setGranted] = useState<boolean | null>(null);
   const [perm, setPerm] = useState<'unknown' | 'granted' | 'denied'>('unknown');
@@ -38,35 +36,17 @@ export default function VerifyScreen({ route, navigation }: Props) {
   const [livenessIdx, setLivenessIdx] = useState(0);
   const [errMsg, setErrMsg] = useState('');
 
-  const challenges = useMemo(() => pickChallenges(2), []);
-  const session = useRef(new LivenessSession(challenges));
-  const busy = useRef(false);
-
-  // Hysteresis: keep the liveness flow alive across brief face losses (a blink,
-  // a head turn during a challenge) instead of snapping back to 'searching' and
-  // tearing down the prompt strip every frame — that was the "glitching" bug.
-  const phaseRef = useRef<Phase>('searching');
-  const lostRef = useRef(0);
-  const LOST_GRACE = 8; // consecutive missing frames (~0.8s @ 10fps) before reset
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
-
   useEffect(() => {
     Camera.requestCameraPermission().then(s =>
       setPerm(s === 'granted' ? 'granted' : 'denied'),
     );
   }, []);
 
-  const runVerify = useCallback(async () => {
-    if (busy.current) return;
-    busy.current = true;
-    phaseRef.current = 'verifying';
+  const runVerify = useCallback(async (embeddings: Embedding[], faceQuality: number) => {
     setPhase('verifying');
     setHint('Hold still — matching');
     try {
-      const face = await camera.current!.capture(6000);
-      const res = await FaceAuthService.verify(face, workerId, true);
+      const res = await FaceAuthService.verify(embeddings[0], faceQuality, workerId, true);
       setOutcome(res);
       setGranted(res.matched);
       setPhase('done');
@@ -76,56 +56,19 @@ export default function VerifyScreen({ route, navigation }: Props) {
     }
   }, [workerId]);
 
-  const onStatus = useCallback(
-    (s: FaceStatus) => {
-      const ph = phaseRef.current;
-      if (ph === 'verifying' || ph === 'done' || ph === 'error') return;
-
-      // "present" gates only on a framed, close-enough face — NOT on pose, since
-      // turn-left/right challenges legitimately make the face non-frontal.
-      const present =
-        s.found &&
-        s.confidence >= MIN_FACE_CONFIDENCE &&
-        s.faceRatio >= MIN_FACE_RATIO &&
-        s.faceRatio <= MAX_FACE_RATIO;
-
-      if (!present) {
-        lostRef.current += 1;
-        // Within the grace window, ignore the dropout: keep the current prompt
-        // and the liveness session exactly as they were.
-        if (lostRef.current <= LOST_GRACE) return;
-        if (ph !== 'searching') setPhase('searching');
-        setHint(
-          !s.found || s.confidence < MIN_FACE_CONFIDENCE
-            ? 'Position your face in the frame'
-            : s.faceRatio < MIN_FACE_RATIO
-              ? 'Move a little closer'
-              : 'Move back a little',
-        );
-        return;
-      }
-
-      lostRef.current = 0;
-      if (ph === 'searching') setPhase('liveness');
-      const p = session.current.feed(s);
+  const onLivenessProgress = (p: LivenessProgress, embeddings: Embedding[], faceQuality: number) => {
       setLivenessIdx(p.index);
       setHint(p.prompt);
-      if (p.done) runVerify();
-    },
-    [runVerify],
-  );
+      if (p.done) runVerify(embeddings, faceQuality);
+  };
 
   const reset = useCallback(() => {
-    session.current = new LivenessSession(challenges);
-    busy.current = false;
-    lostRef.current = 0;
-    phaseRef.current = 'searching';
     setOutcome(null);
     setGranted(null);
     setLivenessIdx(0);
     setPhase('searching');
     setHint('Position your face in the frame');
-  }, [challenges]);
+  }, []);
 
   if (perm === 'denied') {
     return (
@@ -153,7 +96,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <FaceCamera ref={camera} isActive={phase !== 'done'} onStatus={onStatus} />
+      <FaceCamera isActive={phase !== 'done'} onLivenessProgress={onLivenessProgress} />
 
       <FaceOverlay
         title={workerId ? `Verify ${workerId}` : 'Verify worker'}
@@ -215,3 +158,4 @@ const styles = StyleSheet.create({
   back: { position: 'absolute', top: spacing.xxl + 40, left: spacing.sm },
   bottom: { position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: spacing.xxxl },
 });
+/* vi: set et sw=2: */

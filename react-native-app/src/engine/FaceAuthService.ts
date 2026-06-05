@@ -10,7 +10,6 @@
  * No Math.random scores anywhere. Every number returned is a real measurement.
  */
 
-import Embedder from '../core/embedder';
 import { averageEmbeddings, matchGallery, verifyAgainst } from '../core/match';
 import {
   MIN_FACE_CONFIDENCE,
@@ -22,7 +21,8 @@ import {
   DUPLICATE_ENROLL_COSINE,
 } from '../core/constants';
 import { OfflineDB } from '../db/OfflineDB';
-import type { DetectedFace, Embedding, MatchResult } from '../core/types';
+import type { Embedding, MatchResult } from '../core/types';
+import { type Face } from 'react-native-vision-camera-face-detector';
 
 export interface VerifyOutcome extends MatchResult {
   latencyMs: number;
@@ -38,13 +38,12 @@ export interface EnrollOutcome {
 }
 
 /** Reject low-quality captures before they pollute a template or a decision. */
-export function qualityReason(face: DetectedFace): string | null {
-  if (face.confidence < MIN_FACE_CONFIDENCE) return 'Hold steady — face not clearly detected';
-  if (face.faceRatio < MIN_FACE_RATIO) return 'Move closer';
-  if (face.faceRatio > MAX_FACE_RATIO) return 'Move back a little';
-  if (Math.abs(face.yaw) > MAX_ABS_YAW) return 'Look straight ahead';
-  if (Math.abs(face.pitch) > MAX_ABS_PITCH) return 'Keep your head level';
-  if (Math.abs(face.roll) > MAX_ABS_ROLL) return "Don't tilt your head";
+export function qualityReason(face: Face): string | null {
+//  if (face.confidence < MIN_FACE_CONFIDENCE) return 'Hold steady — face not clearly detected';
+//  if (face.faceRatio < MIN_FACE_RATIO) return 'Move closer';
+  if (Math.abs(face.pitchAngle) > MAX_ABS_PITCH) return 'Keep your head level';
+  if (Math.abs(face.rollAngle) > MAX_ABS_ROLL) return "Don't tilt your head";
+  if (Math.abs(face.yawAngle) > MAX_ABS_YAW) return 'Look straight ahead';
   return null;
 }
 
@@ -85,23 +84,27 @@ export function isFrameCaptureReady(s: FramingSignal): boolean {
 }
 
 /** A 0..1 quality score for logging (1 = frontal, close, confident). */
-function qualityScore(face: DetectedFace): number {
-  const conf = Math.min(1, face.confidence);
+export function qualityScore(face: Face): number {
+  'worklet'
   const pose =
     1 -
-    Math.min(1, (Math.abs(face.yaw) / 45 + Math.abs(face.pitch) / 45 + Math.abs(face.roll) / 45) / 3);
-  const size = Math.min(1, face.faceRatio / 0.35);
+    Math.min(1, (Math.abs(face.yawAngle) / 45 + Math.abs(face.pitchAngle) / 45 + Math.abs(face.rollAngle) / 45) / 3);
+  // TODO: we do need faceRatio here for the "close" part
+  // const size = Math.min(1, face.faceRatio / 0.35);
+  const size = 1;
+  const conf = 1;
   return Math.max(0, Math.min(1, 0.45 * conf + 0.35 * pose + 0.2 * size));
 }
 
 export const FaceAuthService = {
-  async init(): Promise<void> {
+/*  async init(): Promise<void> {
     await Embedder.init();
   },
 
   isReady(): boolean {
     return Embedder.isReady();
   },
+*/
 
   /**
    * Enrol a worker from N aligned shots: embed each, average into a template,
@@ -109,12 +112,10 @@ export const FaceAuthService = {
    */
   async enroll(
     workerId: string,
-    faces: DetectedFace[],
+    embeddings: Embedding[],
     metadata: Record<string, unknown> = {},
   ): Promise<EnrollOutcome> {
-    if (faces.length === 0) throw new Error('enroll: no shots captured');
-    const embeddings: Embedding[] = [];
-    for (const f of faces) embeddings.push(await Embedder.embed(f));
+    if (embeddings.length === 0) throw new Error('enroll: no shots captured');
 
     const template = averageEmbeddings(embeddings);
     const cohesion = meanPairwiseCosine(embeddings);
@@ -147,25 +148,24 @@ export const FaceAuthService = {
    * the whole gallery. Logs the attempt either way.
    */
   async verify(
-    face: DetectedFace,
+    embedding: Embedding,
+    faceQuality: number,
     claimedWorkerId?: string,
     livenessPass = true,
   ): Promise<VerifyOutcome> {
     const t0 = Date.now();
-    const probe = await Embedder.embed(face);
 
     let result: MatchResult;
     if (claimedWorkerId) {
       const entry = await OfflineDB.getWorker(claimedWorkerId);
       if (!entry) throw new Error(`verify: ${claimedWorkerId} is not enrolled`);
-      result = verifyAgainst(probe, entry);
+      result = verifyAgainst(embedding, entry);
     } else {
       const gallery = await OfflineDB.getGallery();
-      result = matchGallery(probe, gallery);
+      result = matchGallery(embedding, gallery);
     }
 
     const latencyMs = Date.now() - t0;
-    const faceQuality = qualityScore(face);
     // Liveness must pass for an overall grant.
     const granted = result.matched && livenessPass;
 

@@ -13,34 +13,18 @@ export interface Point {
   y: number;
 }
 
-/**
- * The five ArcFace keypoints, in canonical order:
- *   leftEye, rightEye, nose, leftMouth, rightMouth
- * "left"/"right" are relative to the IMAGE (not the subject), i.e. leftEye has
- * the smaller x. The native detector plugin normalises to this convention.
- */
-export interface FaceLandmarks {
-  leftEye: Point;
-  rightEye: Point;
-  nose: Point;
-  leftMouth: Point;
-  rightMouth: Point;
-}
+import { Landmarks } from 'react-native-vision-camera-face-detector';
 
 /** Output of the native frame-processor plugin for a single detected face. */
 export interface DetectedFace {
   /** Aligned 112x112 RGB image, row-major, 3 bytes/pixel (0-255). */
   rgb: Uint8Array;
   /** Detected keypoints in the ORIGINAL frame, for overlay + quality checks. */
-  landmarks: FaceLandmarks;
-  /** Detector confidence 0..1. */
-  confidence: number;
-  /** Fraction of the frame the face bbox occupies (proxy for distance). */
-  faceRatio: number;
-  /** Estimated yaw / pitch / roll in degrees, for pose-quality gating. */
-  yaw: number;
-  pitch: number;
-  roll: number;
+  landmarks: Landmarks;
+  /** Estimated pitch / roll / yaw in degrees, for pose-quality gating. */
+  pitchAngle: number;
+  rollAngle: number;
+  yawAngle: number;
 }
 
 /** A 512-d L2-normalised face embedding. */

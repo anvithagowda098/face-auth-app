@@ -5,7 +5,7 @@
     "scheme": "sentinel",
     "version": "0.1.0",
     "orientation": "portrait",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0F14",
     "ios": {
       "bundleIdentifier": "com.nhai.edgefacesentinel",
@@ -20,15 +20,25 @@
       "permissions": ["android.permission.CAMERA"]
     },
     "plugins": [
-      "onnxruntime-react-native",
       [
-        "react-native-vision-camera",
+        "expo-build-properties",
         {
-          "cameraPermissionText": "Used to authenticate toll-plaza workers by face.",
-          "enableFrameProcessors": true,
-          "disableMicrophonePermission": true
+          "android": {
+            "minSdkVersion": 26
+          }
         }
-      ]
+      ],
+      [
+        "react-native-fast-tflite",
+        {
+          "enableCoreMLDelegate": true,
+          "enableAndroidGpuLibraries": true
+        }
+      ],
+      "expo-build-properties",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {

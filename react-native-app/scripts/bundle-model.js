@@ -7,14 +7,13 @@
  *
  *   npm run bundle:model
  *
- * Source of truth: model-pipeline/weights/w600k_mbf_int8_static.onnx
- * (3.68 MB, 99.7% / EER 0.006).
+ * Source of truth: model-pipeline/weights/model.tflite
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const MODEL = 'w600k_mbf_int8_static.onnx';
+const MODEL = 'model.tflite';
 const SRC = path.resolve(__dirname, '../../model-pipeline/weights', MODEL);
 const DEST_DIR = path.resolve(__dirname, '../assets/models');
 const DEST = path.join(DEST_DIR, MODEL);

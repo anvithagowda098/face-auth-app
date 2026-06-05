@@ -23,6 +23,7 @@ export type Affine = [number, number, number, number, number, number];
 // Applied as: x' = a*x + c*y + tx ;  y' = b*x + d*y + ty
 
 function centroid(pts: Point[]): Point {
+  'worklet'
   let sx = 0;
   let sy = 0;
   for (const p of pts) {
@@ -37,6 +38,7 @@ function centroid(pts: Point[]): Point {
  * `src` and `dst` must be the same length and >= 2 points.
  */
 export function estimateSimilarity(src: Point[], dst: Point[]): Affine {
+  'worklet'
   if (src.length !== dst.length || src.length < 2) {
     throw new Error('estimateSimilarity: need matching point sets of length >= 2');
   }

@@ -19,7 +19,6 @@ import {
   useCameraDevice,
   useCameraPermission,
   useFrameOutput,
-  useAsyncRunner,
   type Frame,
 } from 'react-native-vision-camera';
 import { 
@@ -37,7 +36,7 @@ import { useTensorflowModel } from 'react-native-fast-tflite';
 import { shuffleSecure, CHALLENGE_PROMPT, type LivenessProgress, type ChallengeId } from '../engine/LivenessEngine';
 import { type Embedding } from '../core/types';
 import { qualityScore } from '../engine/FaceAuthService';
-import { createSynchronizable, scheduleOnUI, scheduleOnRN } from 'react-native-worklets';
+import { createSynchronizable, scheduleOnRN } from 'react-native-worklets';
 
 export interface FaceCameraHandle {
 }
@@ -86,10 +85,8 @@ const detectors_feed = [
   }
 ];
 
-const idx = createSynchronizable(0);
-
 const FaceCamera = (
-  { isActive, onStatus, onLivenessProgress } : Props
+  { isActive, onLivenessProgress } : Props
 ) => {
 
   const device = useCameraDevice('front');
@@ -119,10 +116,14 @@ const FaceCamera = (
     if (!hasPermission) requestPermission()
   }, [hasPermission, requestPermission])
 
-  const embeddings = createSynchronizable<Embedding[]>([]);
-  const facesShared = createSynchronizable<Face[]>([]);
-  const permBacking = useRef(shuffleSecure(Array.from({ length: ALL.length }, (_, i) => i)));
-  const perm = createSynchronizable(permBacking.current);
+  const idxRef = useRef(createSynchronizable(0));
+  const embeddingsRef = useRef(createSynchronizable<Embedding[]>([]));
+  const facesSharedRef = useRef(createSynchronizable<Face[]>([]));
+  const permRef = useRef(createSynchronizable(shuffleSecure(Array.from({ length: ALL.length }, (_, i) => i))));
+  const idx = idxRef.current;
+  const embeddings = embeddingsRef.current;
+  const facesShared = facesSharedRef.current;
+  const perm = permRef.current;
   const ALLsync = createSynchronizable(ALL);
   const CPsync = createSynchronizable(CHALLENGE_PROMPT);
   const livenessProgress = () => {

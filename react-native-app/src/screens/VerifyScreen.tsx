@@ -21,6 +21,7 @@ import { FaceAuthService, type VerifyOutcome } from '../engine/FaceAuthService';
 import type { ScreenProps } from '../navigation';
 import { type LivenessProgress } from '../engine/LivenessEngine';
 import { type Embedding } from '../core/types';
+import { createSynchronizable } from 'react-native-worklets';
 
 type Props = ScreenProps<'Verify'>;
 type Phase = 'searching' | 'liveness' | 'verifying' | 'done' | 'error';

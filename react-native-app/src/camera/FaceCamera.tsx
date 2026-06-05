@@ -13,7 +13,7 @@ import {
   useRef,
   useEffect,
 } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 import {
   Camera,
   useCameraDevice,
@@ -52,6 +52,12 @@ const EYE_OPEN = 0.7;
 const SMILE_ON = 0.7;
 const YAW_DEG = 18;
 
+const targetYawMultiple = Platform.select<number>({
+  ios: -1,
+  android: 1,
+  default: 0,
+})
+
 const ALL: ChallengeId[] = ['blink_left_eye', 'blink_right_eye', 'smile', 'turn_left', 'turn_right'];
 
 const detectors_armed = createSynchronizable([false, false, false, false, false]);
@@ -77,11 +83,11 @@ const detectors_feed = [
   },
   (s: Face): boolean[] => {
     'worklet'
-    return [true, s.yawAngle > YAW_DEG];
+    return [true, s.yawAngle > targetYawMultiple*YAW_DEG];
   },
   (s: Face): boolean[] => {
     'worklet'
-    return [true, s.yawAngle < -YAW_DEG];
+    return [true, s.yawAngle < targetYawMultiple*-YAW_DEG];
   }
 ];
 
@@ -212,7 +218,6 @@ const FaceCamera = (
       isActive={isActive}
       device={device}
       outputs={[frameOutput]}
-      mirrorMode="on"
     />
   );
 

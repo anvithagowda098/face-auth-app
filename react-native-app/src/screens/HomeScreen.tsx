@@ -63,9 +63,8 @@ export default function HomeScreen({ navigation }: Props) {
           <Text variant="overline" color={palette.accent}>
             EDGE FACE AUTH
           </Text>
-          <Text variant="display">Sentinel</Text>
+	<Text variant="display" color={palette.accent}>Sentinel</Text>
         </View>
-        <Badge label="100% Offline" tone="accent" dot />
       </View>
 
       {/* Stat grid */}
@@ -79,23 +78,12 @@ export default function HomeScreen({ navigation }: Props) {
       {/* Sync */}
       <SyncCard status={sync} pending={stats?.pendingSync ?? 0} />
 
-      {/* Model card — real artifact, real numbers */}
-      <Card style={styles.modelCard}>
-        <View style={styles.modelHead}>
-          <Icon name="cpu" size={18} color={palette.accent} />
-          <Text variant="h2">On-device model</Text>
-        </View>
-        <ModelRow k="Recognition" v="MobileFaceNet · ArcFace" tag="INT8 · 3.68 MB" />
-        <ModelRow k="Detection + align" v="ML Kit · 5-point" tag="on-device" />
-        <ModelRow k="Embedding" v="512-d · cosine" tag="≥ 0.28" />
-        <ModelRow k="Benchmark (LFW)" v="99.7% · EER 0.006" tag="ORT" last />
-      </Card>
-
       {/* Actions */}
       <View style={styles.actions}>
         <Button
           label="Verify worker"
           icon="face-scan"
+	  textColor="#FFFFFF"
           onPress={() => navigation.navigate('Verify', {})}
         />
         <Button
@@ -106,7 +94,7 @@ export default function HomeScreen({ navigation }: Props) {
         />
       </View>
 
-      <View style={styles.footer}>
+       <View style={styles.footer}>
         <Icon name="lock" size={13} color={palette.textMuted} />
         <Text variant="caption" color={palette.textMuted}>
           On-device inference · HMAC-SHA256 signed audit log · zero network at auth time

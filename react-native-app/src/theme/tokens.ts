@@ -1,49 +1,46 @@
-/**
- * Design tokens — a single source of truth for the visual language.
- *
- * Direction: "security-ops dark", done properly. A muted slate palette (not
- * pure black, not neon), one restrained accent, a typographic scale with tight
- * tracking on headings, a 4-pt spacing grid, and soft elevation. No emoji, no
- * decorative gradients. Everything reads as instrument-panel, not toy.
- */
-
 export const palette = {
-  // Backgrounds — layered slate, subtle separation between planes.
-  bg: '#0B0F14', // app base
-  surface: '#111824', // cards / sheets
-  surfaceAlt: '#161F2E', // raised rows, inputs
-  surfaceHi: '#1C2738', // hover / pressed / selected
-
+  // Backgrounds — cleaned up for the white and blue theme.
+  bg: '#FFFFFF',           // app base remains white
+  surface: '#031B4D',      // deep navy for cards
+  surfaceAlt: '#052566',   // raised rows, inputs
+  surfaceHi: '#082F80',    // hover / pressed / selected
+ 
   // Hairlines.
-  border: '#22304A',
-  borderStrong: '#2E3F5C',
-
-  // Text.
-  text: '#E7EDF5', // primary
-  textSecondary: '#9AA7BD', // secondary
-  textMuted: '#5E6B82', // captions, disabled
-  textInverse: '#08111B', // on accent fills
-
-  // Accent — a controlled cyan-teal. Trust + technical, not lime.
-  accent: '#2DD4BF',
-  accentDim: '#1C8C81',
-  accentSoft: 'rgba(45,212,191,0.12)', // tinted fills
-  accentBorder: 'rgba(45,212,191,0.32)',
-
+  border: '#1A3B7A',
+  borderStrong: '#2A4B8A',
+ 
+  // Text — updated to be light and crisp!
+  text: '#FFFFFF',          // Pure white for maximum brightness on your dark cards
+  textSecondary: '#D0DFF2', // Very light, soft blue for secondary text
+  textMuted: '#9EBAE6',     // Light muted blue for captions and disabled states
+  textInverse: '#003087',   // NHAI Navy for text that sits on light/white backgrounds 
+  textInverse: '#FFFFFF',
+  
+  // Accent — Switched from Orange to NHAI Blue.
+  accent: '#003087',        // The main navy blue
+  accentDim: '#002266',     // Darker navy for hover
+  accentSoft: 'rgba(0,48,135,0.12)', // Faint navy overlay
+  accentBorder: 'rgba(0,48,135,0.32)',
+ 
+  // Secondary accent — retained or used for softer highlights.
+  navy: '#003087',
+  navySoft: 'rgba(0,48,135,0.20)',
+  navyBorder: 'rgba(0,48,135,0.40)',
+ 
   // Semantic.
-  success: '#34D399',
-  successSoft: 'rgba(52,211,153,0.12)',
-  danger: '#F26D6D',
-  dangerSoft: 'rgba(242,109,109,0.12)',
-  warning: '#F2B441',
-  warningSoft: 'rgba(242,180,65,0.12)',
-  info: '#5BA8F5',
-
-  // Overlay scrims (over the live camera).
-  scrim: 'rgba(7,11,18,0.66)',
-  scrimSoft: 'rgba(7,11,18,0.38)',
+  success: '#3366FF',       // Blue for success
+  successSoft: 'rgba(51,102,255,0.12)',
+  danger: '#6680B3',        // Muted blue for danger (or keep text muted)
+  dangerSoft: 'rgba(102,128,179,0.12)',
+  warning: '#3366FF',       // Blue for warning
+  warningSoft: 'rgba(51,102,255,0.12)',
+  info: '#3366FF',          // Standard blue for info
+ 
+  // Overlay scrims (over the live camera) — shifted to blue tint.
+  scrim: 'rgba(0,26,77,0.70)',
+  scrimSoft: 'rgba(0,26,77,0.40)',
 } as const;
-
+ 
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -53,7 +50,7 @@ export const spacing = {
   xxl: 32,
   xxxl: 48,
 } as const;
-
+ 
 export const radius = {
   sm: 8,
   md: 12,
@@ -61,11 +58,7 @@ export const radius = {
   xl: 22,
   pill: 999,
 } as const;
-
-/**
- * Type scale. `weight` and `tracking` are tuned per role: headings are tight,
- * numeric/mono values use tabular-ish spacing via fontVariant where supported.
- */
+ 
 export const type = {
   display: { fontSize: 30, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.5 },
   h1: { fontSize: 22, lineHeight: 28, fontWeight: '700' as const, letterSpacing: -0.3 },
@@ -74,12 +67,11 @@ export const type = {
   bodyStrong: { fontSize: 15, lineHeight: 21, fontWeight: '600' as const, letterSpacing: 0 },
   label: { fontSize: 13, lineHeight: 17, fontWeight: '500' as const, letterSpacing: 0.1 },
   caption: { fontSize: 11, lineHeight: 15, fontWeight: '500' as const, letterSpacing: 0.3 },
-  // Numeric "instrument" readout (stats, scores, latency).
   mono: { fontSize: 26, lineHeight: 30, fontWeight: '700' as const, letterSpacing: -0.4 },
   monoSm: { fontSize: 15, lineHeight: 19, fontWeight: '600' as const, letterSpacing: 0 },
   overline: { fontSize: 10, lineHeight: 13, fontWeight: '700' as const, letterSpacing: 1.4 },
 } as const;
-
+ 
 export const elevation = {
   card: {
     shadowColor: '#000',
@@ -96,5 +88,5 @@ export const elevation = {
     elevation: 24,
   },
 } as const;
-
+ 
 export type TypeRole = keyof typeof type;

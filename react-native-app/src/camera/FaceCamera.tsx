@@ -212,6 +212,7 @@ const FaceCamera = (
       isActive={isActive}
       device={device}
       outputs={[frameOutput]}
+      mirrorMode="on"
     />
   );
 

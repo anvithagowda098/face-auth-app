@@ -58,19 +58,35 @@ const targetYawMultiple = Platform.select<number>({
   default: 0,
 })
 
+const targetEyeSwap = Platform.select<boolean>({
+  ios: false,
+  android: true,
+  default: true,
+})
+
 const ALL: ChallengeId[] = ['blink_left_eye', 'blink_right_eye', 'smile', 'turn_left', 'turn_right'];
 
 const detectors_feed = [
   (s: Face, armed: boolean): boolean[] => {
     'worklet'
-    const eye = s.leftEyeOpenProbability;
+    let eye;
+    if (targetEyeSwap) {
+      eye = s.rightEyeOpenProbability;
+    } else {
+      eye = s.leftEyeOpenProbability;
+    }
     if (eye === undefined) return [false, false];
     if (eye < EYE_CLOSED) armed = true;
     return [armed, armed && eye > EYE_OPEN]; // closed then re-opened
   },
   (s: Face, armed: boolean): boolean[] => {
     'worklet'
-    const eye = s.rightEyeOpenProbability
+    let eye;
+    if (targetEyeSwap) {
+      eye = s.leftEyeOpenProbability;
+    } else {
+      eye = s.rightEyeOpenProbability;
+    }
     if (eye === undefined) return [false, false];
     if (eye < EYE_CLOSED) armed = true;
     return [armed, armed && eye > EYE_OPEN]; // closed then re-opened
@@ -209,7 +225,7 @@ const FaceCamera = (
       console.log(typeof embedding);
       embeddings.setBlocking(prev => [...prev, embedding]);
       console.log(embeddings.getBlocking().length);
-      resized.dispose()
+      resized.dispose();
       frame.dispose();
       scheduleOnRN(onLivenessProgress, livenessProgress(), embeddings.getBlocking(), qualityScore(facesShared.getBlocking()[0]));
       // ... chain some asynchronous frame processor

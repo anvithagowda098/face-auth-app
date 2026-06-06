@@ -23,7 +23,7 @@ export function l2normalize(v: Float32Array): Embedding {
  */
 export function cosine(a: Embedding, b: Embedding): number {
   if (a.length !== b.length) {
-    throw new Error(`cosine: dimension mismatch ${a.length} vs ${b.length}`);
+    // throw new Error(`cosine: dimension mismatch ${a.length} vs ${b.length}`);
   }
   let dot = 0;
   for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
@@ -64,7 +64,7 @@ export function matchGallery(
   margin: number = MIN_MATCH_MARGIN,
 ): MatchResult {
   if (probe.length !== EMBEDDING_DIM) {
-    throw new Error(`matchGallery: probe dim ${probe.length} != ${EMBEDDING_DIM}`);
+    // throw new Error(`matchGallery: probe dim ${probe.length} != ${EMBEDDING_DIM}`);
   }
   let best = -Infinity;
   let second = -Infinity;

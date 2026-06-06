@@ -40,7 +40,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
     setPhase('verifying');
     setHint('Hold still — matching');
     try {
-      const res = await FaceAuthService.verify(embeddings[0], faceQuality, workerId, true);
+      const res = await FaceAuthService.verify(embeddings, faceQuality, workerId, true);
       setOutcome(res);
       setGranted(res.matched);
       setPhase('done');

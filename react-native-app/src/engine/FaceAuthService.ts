@@ -130,7 +130,6 @@ export const FaceAuthService = {
     console.log(`Array.from(embeddings[0]): ${Array.from(embeddings[0])}`);
 
     const template = averageEmbeddings(embeddings);
-    console.log(new Float32Array(template));
     const cohesion = meanPairwiseCosine(embeddings);
     console.log(cohesion);
 
@@ -140,6 +139,8 @@ export const FaceAuthService = {
     const gallery = (await OfflineDB.getGallery()).filter(g => g.workerId !== workerId);
     if (gallery.length > 0) {
       const dup = matchGallery(template, gallery, DUPLICATE_ENROLL_COSINE, 0);
+      console.log("dup");
+      console.log(dup);
       if (dup.matched && dup.workerId) {
         throw new Error(
           `This face is already enrolled as ${dup.workerId} ` +
@@ -162,26 +163,30 @@ export const FaceAuthService = {
    * the whole gallery. Logs the attempt either way.
    */
   async verify(
-    embedding: Embedding,
+    embeddings: Embedding[],
     faceQuality: number,
     claimedWorkerId?: string,
     livenessPass = true,
   ): Promise<VerifyOutcome> {
     const t0 = Date.now();
 
+    const template = averageEmbeddings(embeddings);
     let result: MatchResult;
     if (claimedWorkerId) {
       const entry = await OfflineDB.getWorker(claimedWorkerId);
       if (!entry) throw new Error(`verify: ${claimedWorkerId} is not enrolled`);
-      result = verifyAgainst(embedding, entry);
+      result = verifyAgainst(template, entry);
     } else {
       const gallery = await OfflineDB.getGallery();
-      result = matchGallery(embedding, gallery);
+      result = matchGallery(template, gallery);
+      console.log("result");
+      console.log(result);
     }
 
     const latencyMs = Date.now() - t0;
     // Liveness must pass for an overall grant.
     const granted = result.matched && livenessPass;
+    console.log(`granted: ${granted}`);
 
     await OfflineDB.logAccess({
       workerId: result.workerId ?? claimedWorkerId ?? null,

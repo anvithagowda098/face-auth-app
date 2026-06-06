@@ -30,8 +30,8 @@ export default function VerifyScreen({ route, navigation }: Props) {
 
   const [granted, setGranted] = useState<boolean | null>(null);
   const { hasPermission } = useCameraPermission();
-  const [phase, setPhase] = useState<Phase>('searching');
-  const [hint, setHint] = useState('Position your face in the frame');
+  const [phase, setPhase] = useState<Phase>('liveness');
+  const [hint, setHint] = useState('');
   const [outcome, setOutcome] = useState<VerifyOutcome | null>(null);
   const [livenessIdx, setLivenessIdx] = useState(0);
   const [errMsg, setErrMsg] = useState('');
@@ -112,7 +112,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
       {/* liveness strip */}
       {phase === 'liveness' && (
         <View style={styles.bottom}>
-          <LivenessGuide challenges={[0,1,2,3,4]} index={livenessIdx} />
+          <LivenessGuide index={livenessIdx} />
         </View>
       )}
 

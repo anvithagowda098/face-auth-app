@@ -22,9 +22,11 @@ import {
   isFrameCaptureReady,
   type EnrollOutcome,
 } from '../engine/FaceAuthService';
-import { ENROLL_SHOTS, ENROLL_SHOT_INTERVAL_MS } from '../core/constants';
+import { ENROLL_SHOTS } from '../core/constants';
 import type { DetectedFace } from '../core/types';
 import type { ScreenProps } from '../navigation';
+import { type LivenessProgress } from '../engine/LivenessEngine';
+import { type Embedding } from '../core/types';
 
 type Props = ScreenProps<'Enrol'>;
 type Phase = 'form' | 'capture' | 'saving' | 'done' | 'error';
@@ -34,64 +36,28 @@ export default function EnrolScreen({ navigation }: Props) {
   const [workerId, setWorkerId] = useState('');
   const [shots, setShots] = useState<DetectedFace[]>([]);
   const [hint, setHint] = useState('Center your face in the oval');
-  const [live, setLive] = useState(false); // framing good enough to capture
   const [result, setResult] = useState<EnrollOutcome | null>(null);
   const [errMsg, setErrMsg] = useState('');
+//  const [livenessIdx, setLivenessIdx] = useState(0);
 
-  const captureShot = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
+  const runVerify = useCallback(async (embeddings: Embedding[]) => {
+    setHint('Hold still — matching');
     try {
-      const outcome = await FaceAuthService.enroll(workerIdRef.current, all);
+      console.log(`Enrolling workerId ${workerId}`);
+      const outcome = await FaceAuthService.enroll(workerId, embeddings);
       setResult(outcome);
       setPhase('done');
     } catch (e) {
       setErrMsg((e as Error).message);
       setPhase('error');
     }
-  }, []);
+  }, [workerId]);
 
-  // Grab one shot if framing is good, we're not already mid-capture, and enough
-  // time has passed since the last accepted shot. Driven from onStatus.
-  const tryCapture = useCallback(async () => {
-    if (busyRef.current || doneRef.current) return;
-    if (shotsRef.current.length >= ENROLL_SHOTS) return;
-    if (Date.now() - lastShotRef.current < ENROLL_SHOT_INTERVAL_MS) return;
-
-    busyRef.current = true;
-    try {
-      const face = await camera.current!.capture(2500);
-      const reason = qualityReason(face);
-      if (reason) {
-        setHint(reason);
-        return;
-      }
-      lastShotRef.current = Date.now();
-      const next = [...shotsRef.current, face];
-      shotsRef.current = next;
-      setShots(next);
-      if (next.length >= ENROLL_SHOTS) {
-        doneRef.current = true;
-        await saveTemplate(next);
-      }
-    } catch {
-      // capture timed out (no clean face this window) — onStatus retries when
-      // framing is good again.
-    } finally {
-      busyRef.current = false;
-    }
-  }, [saveTemplate]);
-
-  const onStatus = useCallback(
-    (s: FaceStatus) => {
-      if (doneRef.current) return;
-      const ready = isFrameCaptureReady(s);
-      setLive(ready);
-      setHint(framingHint(s) ?? 'Hold still — capturing');
-      if (ready) tryCapture();
-    },
-    [tryCapture],
-  );
+  const onLivenessProgress = (p: LivenessProgress, embeddings?: Embedding[], faceQuality?: number) => {
+  //    setLivenessIdx(p.index);
+      setHint(p.prompt);
+      if (p.done && embeddings !== undefined && faceQuality !== undefined) runVerify(embeddings);
+  };
 
   // ── form ──────────────────────────────────────────────────────────────────
   if (phase === 'form') {
@@ -191,12 +157,12 @@ export default function EnrolScreen({ navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <FaceCamera isActive={phase === 'capture'} onStatus={onStatus} />
+      <FaceCamera isActive={phase === 'capture'} onLivenessProgress={onLivenessProgress} />
       <FaceOverlay
         title={workerId}
         subtitle={`Captured ${shots.length} / ${ENROLL_SHOTS}`}
-        hint={phase === 'saving' ? undefined : hint}
-        readiness={phase === 'saving' ? 'ready' : live ? 'ready' : 'searching'}
+        hint={phase !== 'capture' ? undefined : hint}
+        readiness='ready'
       />
 
       <View style={styles.captureBar}>
@@ -211,7 +177,7 @@ export default function EnrolScreen({ navigation }: Props) {
         <Text variant="label" color={palette.textSecondary} center style={{ marginTop: spacing.md }}>
           {phase === 'saving'
             ? 'Building template…'
-            : live
+            : true
               ? 'Auto-capturing — hold still'
               : 'Center your face to begin'}
         </Text>

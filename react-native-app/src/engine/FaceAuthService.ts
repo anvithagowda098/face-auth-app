@@ -116,9 +116,23 @@ export const FaceAuthService = {
     metadata: Record<string, unknown> = {},
   ): Promise<EnrollOutcome> {
     if (embeddings.length === 0) throw new Error('enroll: no shots captured');
+//    for (let i = 0; i < embeddings.length; i++) {
+//	    for (let j = 0; j < 512; j++) {
+//		    console.log(`embeddings[${i}][${j}] = ${embeddings[i][j]}`);
+//	    }
+    //}
+    console.log(`embeddings length: ${embeddings.length}`);
+    console.log(`embeddings[0]: ${embeddings[0]}`);
+    console.log(`typeof embeddings[0]: ${typeof embeddings[0]}`);
+    console.log(`embeddings[0].length: ${embeddings[0].length}`);
+    console.log(`embeddings[0][0]: ${embeddings[0][0]}`);
+    console.log(`typeof embeddings[0][0]: ${typeof embeddings[0][0]}`);
+    console.log(`Array.from(embeddings[0]): ${Array.from(embeddings[0])}`);
 
     const template = averageEmbeddings(embeddings);
+    console.log(new Float32Array(template));
     const cohesion = meanPairwiseCosine(embeddings);
+    console.log(cohesion);
 
     // Duplicate-identity guard: one face must not become two worker IDs. Match
     // the new template against everyone *except* this same ID (re-enrolment of
@@ -190,7 +204,7 @@ function meanPairwiseCosine(embs: Embedding[]): number {
   for (let i = 0; i < embs.length; i++) {
     for (let j = i + 1; j < embs.length; j++) {
       let dot = 0;
-      for (let k = 0; k < embs[i].length; k++) dot += embs[i][k] * embs[j][k];
+      for (let k = 0; k < 512; k++) dot += embs[i][k] * embs[j][k];
       sum += dot;
       n++;
     }

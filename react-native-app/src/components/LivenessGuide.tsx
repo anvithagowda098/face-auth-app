@@ -3,22 +3,20 @@
  * prompt plus a row of step chips that tick off as each challenge is satisfied.
  */
 
-import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Icon } from '../ui';
 import { palette, spacing, radius } from '../theme';
 import { CHALLENGE_PROMPT, type ChallengeId } from '../engine/LivenessEngine';
 
 interface Props {
-  challenges: ChallengeId[];
   index: number; // number completed
 }
 
-export default function LivenessGuide({ challenges, index }: Props) {
+export default function LivenessGuide({ index }: Props) {
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
-        {challenges.map((c, i) => {
+        {Array.from(Object.keys(CHALLENGE_PROMPT)).map((c, i) => {
           const done = i < index;
           const active = i === index;
           return (
@@ -41,7 +39,7 @@ export default function LivenessGuide({ challenges, index }: Props) {
                 variant="label"
                 color={done ? palette.textInverse : active ? palette.text : palette.textMuted}
               >
-                {CHALLENGE_PROMPT[c]}
+                {CHALLENGE_PROMPT[c as ChallengeId]}
               </Text>
             </View>
           );

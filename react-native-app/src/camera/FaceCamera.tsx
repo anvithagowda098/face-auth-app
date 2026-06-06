@@ -108,8 +108,8 @@ const FaceCamera = (
   const model = faceRecognition.state === 'loaded' ? faceRecognition.model : undefined
 
   const { resizer } = useResizer({
-    width: 0,
-    height: 0,
+    width: 1,
+    height: 1,
     scaleMode: 'contain',
     pixelLayout: 'planar',
     channelOrder: 'rgb',
@@ -156,57 +156,64 @@ const FaceCamera = (
         return;
       }
       const faces = faceDetector.detectFaces(frame);
-      if (faces.length == 1) {
-        const s = faces[0];
-        if (s.landmarks === undefined) {
+      if (faces.length != 1) {
           frame.dispose();
           return;
-        }
-
-        if (idx.getBlocking() < perm.getBlocking().length) {
-          console.log(idx.getBlocking());
-          console.log(perm.getBlocking());
-          const perm_idx = perm.getBlocking()[idx.getBlocking()]
-          const feed_func = detectors_feed[perm_idx];
-          const out = feed_func(s, detectors_armed.getBlocking()[perm_idx]);
-          if (out[0]) {
-            detectors_armed.setBlocking(prev => {
-              prev[perm_idx] = out[0];
-              return prev;
-            });
-            console.log(out);
-          }
-          if (out[1] != true) {
-            frame.dispose();
-            return;
-          }
-          idx.setBlocking(prev => prev+1);
-        }
-        facesShared.setBlocking(prev => [...prev, s]);
-        if (onLivenessProgress === undefined) {
-          frame.dispose();
-          return;
-        }
-        scheduleOnRN(onLivenessProgress, livenessProgress(), embeddings.getBlocking(), qualityScore(facesShared.getBlocking()[0]));
-
-        if (resizer === undefined) {
-          frame.dispose();
-          return;
-        }
-
-        const resized = resizer.resize(frame);
-        const inputRGB = warpAndExtractRGB(new Uint8Array(resized.getPixelBuffer()), frame.width, frame.height, s.landmarks);
-        resized.dispose()
-        const inputBuffer = inputRGB.buffer.slice(inputRGB.byteOffset, inputRGB.byteOffset + inputRGB.byteLength);
-        const outputs = model.runSync([inputBuffer]);
-        const embedding = new Float32Array(outputs[0]);
-        embeddings.setBlocking(prev => [...prev, embedding]);
-        frame.dispose();
       }
+      const s = faces[0];
+      if (s.landmarks === undefined) {
+        frame.dispose();
+        return;
+      }
+
+      if (idx.getBlocking() < perm.getBlocking().length) {
+        // console.log(idx.getBlocking());
+        // console.log(perm.getBlocking());
+        const perm_idx = perm.getBlocking()[idx.getBlocking()]
+        const feed_func = detectors_feed[perm_idx];
+        const out = feed_func(s, detectors_armed.getBlocking()[perm_idx]);
+        if (out[0]) {
+          detectors_armed.setBlocking(prev => {
+            prev[perm_idx] = out[0];
+            return prev;
+          });
+          // console.log(out);
+        }
+        if (out[1] != true) {
+          frame.dispose();
+          return;
+        }
+        idx.setBlocking(prev => prev+1);
+      }
+      facesShared.setBlocking(prev => [...prev, s]);
+      if (onLivenessProgress === undefined) {
+        frame.dispose();
+        return;
+      }
+
+      if (resizer === undefined) {
+        console.log("resizer undefined");
+        frame.dispose();
+        return;
+      }
+
+      const resized = resizer.resize(frame);
+      const inputRGB = warpAndExtractRGB(new Uint8Array(resized.getPixelBuffer()), frame.width, frame.height, s.landmarks);
+      const inputBuffer = inputRGB.buffer.slice(inputRGB.byteOffset, inputRGB.byteOffset + inputRGB.byteLength);
+      console.log(inputBuffer);
+      const outputs = model.runSync([inputBuffer]);
+      const embedding = new Float32Array(outputs[0]);
+      console.log(embedding);
+      console.log(embedding.length);
+      console.log(typeof embedding);
+      embeddings.setBlocking(prev => [...prev, embedding]);
+      console.log(embeddings.getBlocking().length);
+      resized.dispose()
+      frame.dispose();
+      scheduleOnRN(onLivenessProgress, livenessProgress(), embeddings.getBlocking(), qualityScore(facesShared.getBlocking()[0]));
       // ... chain some asynchronous frame processor
       // ... do something asynchronously with frame
       // handleDetectedFaces(faces)
-      frame.dispose();
     }
   });
 

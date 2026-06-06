@@ -47,8 +47,8 @@ interface Props {
   onLivenessProgress?: (progress: LivenessProgress, embeddings?: Embedding[], faceQuality?: number) => void;
 }
 
-const EYE_CLOSED = 0.35;
-const EYE_OPEN = 0.7;
+const EYE_CLOSED = 0.1;
+const EYE_OPEN = 0.8;
 const SMILE_ON = 0.7;
 const YAW_DEG = 18;
 
@@ -60,7 +60,6 @@ const targetYawMultiple = Platform.select<number>({
 
 const ALL: ChallengeId[] = ['blink_left_eye', 'blink_right_eye', 'smile', 'turn_left', 'turn_right'];
 
-const detectors_armed = createSynchronizable([false, false, false, false, false]);
 const detectors_feed = [
   (s: Face, armed: boolean): boolean[] => {
     'worklet'
@@ -126,12 +125,14 @@ const FaceCamera = (
   const embeddingsRef = useRef(createSynchronizable<Embedding[]>([]));
   const facesSharedRef = useRef(createSynchronizable<Face[]>([]));
   const permRef = useRef(createSynchronizable(shuffleSecure(Array.from({ length: ALL.length }, (_, i) => i))));
+  const detectors_armedRef = useRef(createSynchronizable([false, false, false, false, false]));
   const idx = idxRef.current;
   const embeddings = embeddingsRef.current;
   const facesShared = facesSharedRef.current;
   const perm = permRef.current;
   const ALLsync = createSynchronizable(ALL);
   const CPsync = createSynchronizable(CHALLENGE_PROMPT);
+  const detectors_armed = detectors_armedRef.current;
   const livenessProgress = () => {
     'worklet'
     const done = idx.getBlocking() >= perm.getBlocking().length;

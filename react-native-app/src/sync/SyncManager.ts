@@ -11,6 +11,7 @@
 import * as Network from 'expo-network';
 import * as Crypto from 'expo-crypto';
 import { OfflineDB } from '../db/OfflineDB';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 export type SyncStatus = 'idle' | 'offline' | 'syncing' | 'synced' | 'error';
 
@@ -45,11 +46,11 @@ class SyncManager {
   private listeners: Listener[] = [];
   private last: SyncStatus = 'idle';
 
-  start() {
+  start(db: SQLiteDatabase) {
     if (this.sub) return;
     this.sub = Network.addNetworkStateListener(state => {
       // isInternetReachable can be undefined on some platforms — treat as online.
-      if (state.isConnected && state.isInternetReachable !== false) this.onConnected();
+      if (state.isConnected && state.isInternetReachable !== false) this.onConnected(db);
       else this.emit('offline', 0);
     });
   }
@@ -67,39 +68,39 @@ class SyncManager {
   }
 
   /** Manual sync (from the UI). Resolves with a visible, structured result. */
-  forceSync(): Promise<SyncResult> {
-    return this.runSync();
+  forceSync(db: SQLiteDatabase): Promise<SyncResult> {
+    return this.runSync(db);
   }
 
-  async setEndpoint(url: string) {
-    await OfflineDB.setMeta(ENDPOINT_KEY, url.trim());
+  async setEndpoint(db: SQLiteDatabase, url: string) {
+    await OfflineDB.setMeta(db, ENDPOINT_KEY, url.trim());
   }
 
   /** The configured endpoint, or null if none/placeholder is set. */
-  async getEndpoint(): Promise<string | null> {
-    const url = await OfflineDB.getMeta(ENDPOINT_KEY);
+  async getEndpoint(db: SQLiteDatabase): Promise<string | null> {
+    const url = await OfflineDB.getMeta(db, ENDPOINT_KEY);
     return isConfigured(url) ? url : null;
   }
 
-  private async onConnected() {
+  private async onConnected(db: SQLiteDatabase) {
     if (this.syncing) return;
-    if (!(await this.getEndpoint())) return; // nothing to do until configured
-    const pending = await OfflineDB.getPendingLogs(1);
-    if (pending.length > 0) this.runWithRetry();
+    if (!(await this.getEndpoint(db))) return; // nothing to do until configured
+    const pending = await OfflineDB.getPendingLogs(db, 1);
+    if (pending.length > 0) this.runWithRetry(db);
   }
 
   /** Auto path: retry transient failures a few times in the background. */
-  private async runWithRetry(n = 0) {
-    const r = await this.runSync();
+  private async runWithRetry(db: SQLiteDatabase, n = 0) {
+    const r = await this.runSync(db);
     if (!r.ok && n < MAX_RETRIES && r.error !== 'no-endpoint') {
-      setTimeout(() => this.runWithRetry(n + 1), RETRY_MS);
+      setTimeout(() => this.runWithRetry(db, n + 1), RETRY_MS);
     }
   }
 
-  private async runSync(): Promise<SyncResult> {
+  private async runSync(db: SQLiteDatabase): Promise<SyncResult> {
     if (this.syncing) return { ok: false, synced: 0, purged: 0, error: 'already syncing' };
 
-    const endpoint = await this.getEndpoint();
+    const endpoint = await this.getEndpoint(db);
     if (!endpoint) {
       this.emit('error', 0);
       return {
@@ -115,10 +116,10 @@ class SyncManager {
 
     let total = 0;
     try {
-      const deviceId = await this.deviceId();
+      const deviceId = await this.deviceId(db);
       let batch: Array<Record<string, unknown>>;
       do {
-        batch = await OfflineDB.getPendingLogs(BATCH);
+        batch = await OfflineDB.getPendingLogs(db, BATCH);
         if (batch.length === 0) break;
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -128,11 +129,11 @@ class SyncManager {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const ids = batch.map(r => r.id as string);
-        await OfflineDB.markSynced(ids);
+        await OfflineDB.markSynced(db, ids);
         total += ids.length;
       } while (batch.length === BATCH);
 
-      const purged = await OfflineDB.purgeSynced();
+      const purged = await OfflineDB.purgeSynced(db);
       this.emit('synced', total);
       if (__DEV__) console.log(`[sync] synced=${total} purged=${purged}`);
       return { ok: true, synced: total, purged };
@@ -149,11 +150,11 @@ class SyncManager {
     this.listeners.forEach(l => l({ status, count }));
   }
 
-  private async deviceId() {
-    let id = await OfflineDB.getMeta(DEVICE_KEY);
+  private async deviceId(db: SQLiteDatabase) {
+    let id = await OfflineDB.getMeta(db, DEVICE_KEY);
     if (!id) {
       id = 'DEV-' + Crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
-      await OfflineDB.setMeta(DEVICE_KEY, id);
+      await OfflineDB.setMeta(db, DEVICE_KEY, id);
     }
     return id;
   }

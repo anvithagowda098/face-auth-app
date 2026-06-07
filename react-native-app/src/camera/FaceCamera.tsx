@@ -9,7 +9,6 @@
  */
 
 import {
-  useMemo,
   useRef,
   useEffect,
 } from 'react';
@@ -128,7 +127,7 @@ const FaceCamera = (
     scaleMode: 'contain',
     pixelLayout: 'planar',
     channelOrder: 'rgb',
-    dataType: 'uint8',
+    dataType: 'float32',
   });
 
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -215,7 +214,7 @@ const FaceCamera = (
       }
 
       const resized = resizer.resize(frame);
-      const inputRGB = warpAndExtractRGB(new Uint8Array(resized.getPixelBuffer()), frame.width, frame.height, s.landmarks);
+      const inputRGB = warpAndExtractRGB(new Float32Array(resized.getPixelBuffer()), frame.width, frame.height, s.landmarks);
       const inputBuffer = inputRGB.buffer.slice(inputRGB.byteOffset, inputRGB.byteOffset + inputRGB.byteLength);
       console.log(inputBuffer);
       const outputs = model.runSync([inputBuffer]);

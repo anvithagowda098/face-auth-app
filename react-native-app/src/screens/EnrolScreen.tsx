@@ -27,11 +27,13 @@ import type { DetectedFace } from '../core/types';
 import type { ScreenProps } from '../navigation';
 import { type LivenessProgress } from '../engine/LivenessEngine';
 import { type Embedding } from '../core/types';
+import { useSQLiteContext } from 'expo-sqlite';
 
 type Props = ScreenProps<'Enrol'>;
 type Phase = 'form' | 'capture' | 'saving' | 'done' | 'error';
 
 export default function EnrolScreen({ navigation }: Props) {
+  const db = useSQLiteContext();
   const [phase, setPhase] = useState<Phase>('form');
   const [workerId, setWorkerId] = useState('');
   const [shots, setShots] = useState<DetectedFace[]>([]);
@@ -44,7 +46,7 @@ export default function EnrolScreen({ navigation }: Props) {
     setHint('Hold still — matching');
     try {
       console.log(`Enrolling workerId ${workerId}`);
-      const outcome = await FaceAuthService.enroll(workerId, embeddings);
+      const outcome = await FaceAuthService.enroll(db, workerId, embeddings);
       setResult(outcome);
       setPhase('done');
     } catch (e) {
@@ -120,7 +122,7 @@ export default function EnrolScreen({ navigation }: Props) {
             {result.workerId} enrolled
           </Text>
           <Text variant="body" color={palette.textSecondary} center>
-            {result.shots} shots · template cohesion {(result.cohesion * 100).toFixed(0)}%
+            {result.shots} shots · template cohesion {result.cohesion.toFixed(0)}%
           </Text>
           {!strong && (
             <Text variant="label" color={palette.warning} center>

@@ -21,11 +21,13 @@ import { FaceAuthService, type VerifyOutcome } from '../engine/FaceAuthService';
 import type { ScreenProps } from '../navigation';
 import { type LivenessProgress } from '../engine/LivenessEngine';
 import { type Embedding } from '../core/types';
+import { useSQLiteContext } from 'expo-sqlite';
 
 type Props = ScreenProps<'Verify'>;
 type Phase = 'searching' | 'liveness' | 'verifying' | 'done' | 'error';
 
 export default function VerifyScreen({ route, navigation }: Props) {
+  const db = useSQLiteContext();
   const workerId = route.params?.workerId;
 
   const [granted, setGranted] = useState<boolean | null>(null);
@@ -40,7 +42,7 @@ export default function VerifyScreen({ route, navigation }: Props) {
     setPhase('verifying');
     setHint('Hold still — matching');
     try {
-      const res = await FaceAuthService.verify(embeddings, faceQuality, workerId, true);
+      const res = await FaceAuthService.verify(db, embeddings, faceQuality, workerId, true);
       setOutcome(res);
       setGranted(res.matched);
       setPhase('done');

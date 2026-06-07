@@ -11,17 +11,19 @@ import { palette, spacing, radius } from '../theme';
 import { OfflineDB, type DashboardStats } from '../db/OfflineDB';
 import { syncManager, type SyncStatus } from '../sync/SyncManager';
 import type { ScreenProps } from '../navigation';
+import { useSQLiteContext } from 'expo-sqlite';
 
 type Props = ScreenProps<'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
+  const db = useSQLiteContext();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [sync, setSync] = useState<SyncStatus>('idle');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setStats(await OfflineDB.getStats());
+      setStats(await OfflineDB.getStats(db));
     } catch {
       /* db not ready yet */
     }
@@ -29,7 +31,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     load();
-    syncManager.start();
+    syncManager.start(db);
     const unsub = syncManager.onStatusChange(({ status }) => {
       setSync(status);
       if (status === 'synced') load();
@@ -130,20 +132,21 @@ function SyncCard({ status, pending }: { status: SyncStatus; pending: number }) 
   };
   const m = map[status];
 
+  const db = useSQLiteContext();
   const [endpoint, setEndpoint] = useState('');
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    syncManager.getEndpoint().then(url => {
+    syncManager.getEndpoint(db).then(url => {
       setEndpoint(url ?? '');
       setEditing(!url); // open the field if nothing is configured yet
     });
   }, []);
 
   const saveEndpoint = useCallback(async () => {
-    await syncManager.setEndpoint(endpoint);
+    await syncManager.setEndpoint(db, endpoint);
     setEditing(false);
     setResult(null);
   }, [endpoint]);
@@ -151,7 +154,7 @@ function SyncCard({ status, pending }: { status: SyncStatus; pending: number }) 
   const doForceSync = useCallback(async () => {
     setBusy(true);
     setResult(null);
-    const r = await syncManager.forceSync();
+    const r = await syncManager.forceSync(db);
     setBusy(false);
     if (r.error === 'no-endpoint') {
       setEditing(true);

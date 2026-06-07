@@ -17,11 +17,7 @@ import { sign } from '../security/hmac';
 import { EMBEDDING_DIM } from '../core/constants';
 import type { Embedding, GalleryEntry } from '../core/types';
 
-let _db: SQLite.SQLiteDatabase | null = null;
-
-async function getDB(): Promise<SQLite.SQLiteDatabase> {
-  if (_db) return _db;
-  const db = await SQLite.openDatabaseAsync('faceauth.db');
+export async function initDB(db: SQLite.SQLiteDatabase) {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS gallery (
       worker_id     TEXT PRIMARY KEY,
@@ -51,8 +47,6 @@ async function getDB(): Promise<SQLite.SQLiteDatabase> {
       v TEXT NOT NULL
     );
   `);
-  _db = db;
-  return db;
 }
 
 function encodeEmbedding(e: Embedding): string {
@@ -90,7 +84,7 @@ export const OfflineDB = {
   // ── Gallery ────────────────────────────────────────────────────────────────
 
   /** Upsert a worker's averaged template (re-enrolment overwrites). */
-  async enrollWorker(
+  async enrollWorker(db: SQLite.SQLiteDatabase,
     workerId: string,
     template: Embedding,
     shots: number,
@@ -99,7 +93,6 @@ export const OfflineDB = {
     if (template.length !== EMBEDDING_DIM) {
       throw new Error(`enrollWorker: template dim ${template.length} != ${EMBEDDING_DIM}`);
     }
-    const db = await getDB();
     const now = new Date().toISOString();
     const tplJson = encodeEmbedding(template);
     const metaJson = JSON.stringify(metadata);
@@ -113,8 +106,7 @@ export const OfflineDB = {
     return { workerId, template, enrolledAt: now, shots };
   },
 
-  async getGallery(): Promise<GalleryEntry[]> {
-    const db = await getDB();
+  async getGallery(db: SQLite.SQLiteDatabase): Promise<GalleryEntry[]> {
     const rows = await db.getAllAsync<GalleryRow>(
       'SELECT * FROM gallery ORDER BY enrolled_at DESC',
     );
@@ -126,8 +118,7 @@ export const OfflineDB = {
     }));
   },
 
-  async getWorker(workerId: string): Promise<GalleryEntry | null> {
-    const db = await getDB();
+  async getWorker(db: SQLite.SQLiteDatabase, workerId: string): Promise<GalleryEntry | null> {
     const row = await db.getFirstAsync<GalleryRow>(
       'SELECT * FROM gallery WHERE worker_id=?',
       [workerId],
@@ -141,15 +132,13 @@ export const OfflineDB = {
     };
   },
 
-  async removeWorker(workerId: string): Promise<void> {
-    const db = await getDB();
+  async removeWorker(db: SQLite.SQLiteDatabase, workerId: string): Promise<void> {
     await db.runAsync('DELETE FROM gallery WHERE worker_id=?', [workerId]);
   },
 
   // ── Access log ─────────────────────────────────────────────────────────────
 
-  async logAccess(rec: AccessRecord): Promise<string> {
-    const db = await getDB();
+  async logAccess(db: SQLite.SQLiteDatabase, rec: AccessRecord): Promise<string> {
     const id = Crypto.randomUUID();
     const now = new Date().toISOString();
     const hmac = await sign(`${id}:${rec.workerId ?? ''}:${rec.matched ? 1 : 0}:${now}`);
@@ -173,29 +162,25 @@ export const OfflineDB = {
     return id;
   },
 
-  async getPendingLogs(limit = 100): Promise<Array<Record<string, unknown>>> {
-    const db = await getDB();
+  async getPendingLogs(db: SQLite.SQLiteDatabase, limit = 100): Promise<Array<Record<string, unknown>>> {
     return db.getAllAsync<Record<string, unknown>>(
       'SELECT * FROM access_log WHERE synced=0 ORDER BY timestamp ASC LIMIT ?',
       [limit],
     );
   },
 
-  async markSynced(ids: string[]): Promise<void> {
+  async markSynced(db: SQLite.SQLiteDatabase, ids: string[]): Promise<void> {
     if (ids.length === 0) return;
-    const db = await getDB();
     const placeholders = ids.map(() => '?').join(',');
     await db.runAsync(`UPDATE access_log SET synced=1 WHERE id IN (${placeholders})`, ids);
   },
 
-  async purgeSynced(): Promise<number> {
-    const db = await getDB();
+  async purgeSynced(db: SQLite.SQLiteDatabase): Promise<number> {
     const res = await db.runAsync('DELETE FROM access_log WHERE synced=1');
     return res.changes;
   },
 
-  async getStats(): Promise<DashboardStats> {
-    const db = await getDB();
+  async getStats(db: SQLite.SQLiteDatabase,): Promise<DashboardStats> {
     const agg = await db.getFirstAsync<{ n: number; m: number | null; lat: number | null }>(
       'SELECT COUNT(*) n, SUM(matched) m, AVG(latency_ms) lat FROM access_log',
     );
@@ -217,14 +202,12 @@ export const OfflineDB = {
 
   // ── Key/value (sync settings, device id) ─────────────────────────────────────
 
-  async getMeta(key: string): Promise<string | null> {
-    const db = await getDB();
+  async getMeta(db: SQLite.SQLiteDatabase, key: string): Promise<string | null> {
     const row = await db.getFirstAsync<{ v: string }>('SELECT v FROM meta WHERE k=?', [key]);
     return row?.v ?? null;
   },
 
-  async setMeta(key: string, value: string): Promise<void> {
-    const db = await getDB();
+  async setMeta(db: SQLite.SQLiteDatabase, key: string, value: string): Promise<void> {
     await db.runAsync('INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)', [key, value]);
   },
 };

@@ -4,7 +4,8 @@
  * session is ready.
  */
 
-import React, { useEffect, useState } from 'react';
+import { initDB } from './src/db/OfflineDB';
+import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -24,7 +25,9 @@ export default function App() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <Router screens={screens} initialRouteName="Home" />
+      <SQLiteProvider databaseName="faceauth.db" onInit={initDB}>
+        <Router screens={screens} initialRouteName="Home" />
+      </SQLiteProvider>
     </View>
   );
 }

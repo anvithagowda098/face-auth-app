@@ -23,6 +23,7 @@ import {
 import { OfflineDB } from '../db/OfflineDB';
 import type { Embedding, MatchResult } from '../core/types';
 import { type Face } from 'react-native-vision-camera-face-detector';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 export interface VerifyOutcome extends MatchResult {
   latencyMs: number;
@@ -111,6 +112,7 @@ export const FaceAuthService = {
    * persist. Returns a cohesion score so the UI can warn on inconsistent enrol.
    */
   async enroll(
+    db: SQLiteDatabase,
     workerId: string,
     embeddings: Embedding[],
     metadata: Record<string, unknown> = {},
@@ -136,7 +138,7 @@ export const FaceAuthService = {
     // Duplicate-identity guard: one face must not become two worker IDs. Match
     // the new template against everyone *except* this same ID (re-enrolment of
     // the same worker is allowed and simply updates their template).
-    const gallery = (await OfflineDB.getGallery()).filter(g => g.workerId !== workerId);
+    const gallery = (await OfflineDB.getGallery(db)).filter(g => g.workerId !== workerId);
     if (gallery.length > 0) {
       const dup = matchGallery(template, gallery, DUPLICATE_ENROLL_COSINE, 0);
       console.log("dup");
@@ -149,10 +151,10 @@ export const FaceAuthService = {
       }
     }
 
-    await OfflineDB.enrollWorker(workerId, template, embeddings.length, {
+    await OfflineDB.enrollWorker(db, workerId, template, embeddings.length, {
       ...metadata,
       enrolledVia: 'mobile',
-      cohesion: Math.round(cohesion * 1000) / 1000,
+      cohesion,
     });
     return { workerId, shots: embeddings.length, cohesion };
   },
@@ -163,6 +165,7 @@ export const FaceAuthService = {
    * the whole gallery. Logs the attempt either way.
    */
   async verify(
+    db: SQLiteDatabase,
     embeddings: Embedding[],
     faceQuality: number,
     claimedWorkerId?: string,
@@ -173,11 +176,11 @@ export const FaceAuthService = {
     const template = averageEmbeddings(embeddings);
     let result: MatchResult;
     if (claimedWorkerId) {
-      const entry = await OfflineDB.getWorker(claimedWorkerId);
+      const entry = await OfflineDB.getWorker(db, claimedWorkerId);
       if (!entry) throw new Error(`verify: ${claimedWorkerId} is not enrolled`);
       result = verifyAgainst(template, entry);
     } else {
-      const gallery = await OfflineDB.getGallery();
+      const gallery = await OfflineDB.getGallery(db);
       result = matchGallery(template, gallery);
       console.log("result");
       console.log(result);
@@ -188,7 +191,7 @@ export const FaceAuthService = {
     const granted = result.matched && livenessPass;
     console.log(`granted: ${granted}`);
 
-    await OfflineDB.logAccess({
+    await OfflineDB.logAccess(db, {
       workerId: result.workerId ?? claimedWorkerId ?? null,
       matched: granted,
       score: result.score,

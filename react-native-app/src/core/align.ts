@@ -70,7 +70,7 @@ export function alignmentTransform(lm: Landmarks): Affine {
  * Apply similarity transform and get RGB array from a frame
  */
  // TODO: verify this
-export function warpAndExtractRGB(srcPixels: Uint8Array, width: number, height: number, lm: Landmarks) {
+export function warpAndExtractRGB(srcPixels: Float32Array, width: number, height: number, lm: Landmarks): Float32Array<ArrayBuffer> {
   'worklet'
   // Estimate similarity transform: returns [a, b, c, d, tx, ty]
   const m = alignmentTransform(lm);
@@ -82,8 +82,9 @@ export function warpAndExtractRGB(srcPixels: Uint8Array, width: number, height: 
   const tx = m[4];
   const ty = m[5];
 
-  const rgb = new Uint8Array(112 * 112 * 3);
+  const rgb = new Float32Array(112 * 112 * 3);
   const planeSize = width * height;
+  const outPlaneSize = 112 * 112;
 
   for (let y = 0; y < 112; y++) {
     for (let x = 0; x < 112; x++) {
@@ -99,9 +100,9 @@ export function warpAndExtractRGB(srcPixels: Uint8Array, width: number, height: 
       const srcIdx = (iy * width + ix); // RGB planar input
       const dstIdx = (y * 112 + x);   // RGB planar output
 
-      rgb[dstIdx] = srcPixels[srcIdx];       // R
-      rgb[dstIdx + (112*112)] = srcPixels[srcIdx + planeSize]; // G
-      rgb[dstIdx + (112*112*2)] = srcPixels[srcIdx + 2*planeSize]; // B
+      rgb[dstIdx] = (srcPixels[srcIdx] / 127.5) - 1.0;       // R
+      rgb[dstIdx + outPlaneSize] = (srcPixels[srcIdx + planeSize] / 127.5) - 1.0; // G
+      rgb[dstIdx + 2*outPlaneSize] = (srcPixels[srcIdx + 2*planeSize] / 127.5) - 1.0; // B
     }
   }
 

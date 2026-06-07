@@ -42,8 +42,7 @@ export interface FaceCameraHandle {
 
 interface Props {
   isActive: boolean;
-  onStatus?: (s: Face) => void;
-  onLivenessProgress?: (progress: LivenessProgress, embeddings?: Embedding[], faceQuality?: number) => void;
+  onLivenessProgress: (progress: LivenessProgress, embeddings?: Embedding[], faceQuality?: number) => void;
 }
 
 const EYE_CLOSED = 0.1;
@@ -109,8 +108,6 @@ const FaceCamera = (
   { isActive, onLivenessProgress } : Props
 ) => {
 
-  const device = useCameraDevice('front');
-
   const faceDetector = useFaceDetector({
     // detection options
     performanceMode: "accurate",
@@ -133,8 +130,8 @@ const FaceCamera = (
   const { hasPermission, requestPermission } = useCameraPermission();
 
   useEffect(() => {
-    if (!hasPermission) requestPermission()
-  }, [hasPermission, requestPermission])
+    if (!hasPermission) requestPermission();
+  }, [hasPermission, requestPermission]);
 
   const idxRef = useRef(createSynchronizable(0));
   const embeddingsRef = useRef(createSynchronizable<Embedding[]>([]));
@@ -160,7 +157,14 @@ const FaceCamera = (
       prompt: current ? CPsync.getBlocking()[current] : 'Liveness confirmed',
     };
   }
-  onLivenessProgress?.(livenessProgress());
+
+  function onLivenessProgressWrapper() {
+    if (facesShared.getBlocking().length === 0) {
+      onLivenessProgress(livenessProgress());
+    } else {
+      onLivenessProgress(livenessProgress(), embeddings.getBlocking(), qualityScore(facesShared.getBlocking()[0]));
+    }
+  }
 
   const frameOutput = useFrameOutput({
     pixelFormat: 'yuv',
@@ -226,20 +230,20 @@ const FaceCamera = (
       console.log(embeddings.getBlocking().length);
       resized.dispose();
       frame.dispose();
-      scheduleOnRN(onLivenessProgress, livenessProgress(), embeddings.getBlocking(), qualityScore(facesShared.getBlocking()[0]));
       // ... chain some asynchronous frame processor
       // ... do something asynchronously with frame
       // handleDetectedFaces(faces)
+      scheduleOnRN(onLivenessProgressWrapper);
     }
   });
 
-  if (!device) return <View style={styles.fill} />;
+  if (!hasPermission) return <View style={styles.fill} />;
 
   return (
     <Camera
       style={StyleSheet.absoluteFill}
       isActive={isActive}
-      device={device}
+      device="front"
       outputs={[frameOutput]}
     />
   );

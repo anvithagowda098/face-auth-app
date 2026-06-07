@@ -8,8 +8,9 @@
  * alignment normalises pose, so honest frontal shots give the best template.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable } from 'react-native';
+import { useCameraPermission } from 'react-native-vision-camera';
 
 import FaceCamera from '../camera/FaceCamera';
 import FaceOverlay from '../components/FaceOverlay';
@@ -17,9 +18,6 @@ import { Screen, Text, Button, Icon, ProgressRing } from '../ui';
 import { palette, spacing, radius } from '../theme';
 import {
   FaceAuthService,
-  qualityReason,
-  framingHint,
-  isFrameCaptureReady,
   type EnrollOutcome,
 } from '../engine/FaceAuthService';
 import { ENROLL_SHOTS } from '../core/constants';
@@ -60,6 +58,24 @@ export default function EnrolScreen({ navigation }: Props) {
       setHint(p.prompt);
       if (p.done && embeddings !== undefined && faceQuality !== undefined) runVerify(embeddings);
   };
+
+  const { hasPermission } = useCameraPermission();
+  if (!hasPermission) {
+    return (
+      <Screen>
+        <View style={styles.center}>
+          <Icon name="face-scan" size={40} color={palette.textMuted} />
+          <Text variant="h2" center>
+            Camera access needed
+          </Text>
+          <Text variant="body" color={palette.textSecondary} center>
+            Enable the camera in Settings to enroll workers.
+          </Text>
+          <Button label="Back" variant="secondary" onPress={() => navigation.goBack()} />
+        </View>
+      </Screen>
+    );
+  }
 
   // ── form ──────────────────────────────────────────────────────────────────
   if (phase === 'form') {

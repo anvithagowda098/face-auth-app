@@ -7,7 +7,7 @@
  * 1:N identify across the gallery.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useCameraPermission } from 'react-native-vision-camera';
 

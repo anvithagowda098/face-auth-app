@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Sentinel",
+    "slug": "edge-face-sentinel",
+    "scheme": "sentinel",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0F14",
+    "ios": {
+      "bundleIdentifier": "com.nhai.edgefacesentinel",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to authenticate toll-plaza workers by face."
+      }
+    },
+    "android": {
+      "package": "com.nhai.edgefacesentinel",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      [
+        "react-native-fast-tflite",
+        {
+          "enableCoreMLDelegate": true,
+          "enableAndroidGpuLibraries": true
+        }
+      ],
+      "expo-build-properties",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "877b488c-083f-40d7-99de-ddec36023966"
+      }
+    }
+  }
+}

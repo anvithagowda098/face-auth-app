@@ -1,0 +1,99 @@
+{
+  "fp32": {
+    "tflite": "out/recognizer_fp32.tflite",
+    "size_mb": 13.63,
+    "latency": {
+      "mean_ms": 5.35,
+      "p50_ms": 5.54,
+      "p95_ms": 5.79,
+      "p99_ms": 5.87,
+      "runs": 100,
+      "note": "desktop/CPU timing; not a phone number"
+    },
+    "accuracy": {
+      "n_pairs": 992,
+      "n_skipped": 8,
+      "n_genuine": 498,
+      "n_impostor": 494,
+      "best_accuracy": 0.997,
+      "best_threshold": 0.222,
+      "EER": 0.006,
+      "genuine_mean": 0.6076,
+      "impostor_mean": 0.0015,
+      "TAR@FAR=1e-02": 0.994,
+      "thr@FAR=1e-02": 0.1563,
+      "TAR@FAR=1e-03": 0.994,
+      "thr@FAR=1e-03": 0.2009,
+      "TAR@FAR=1e-04": 0.994,
+      "thr@FAR=1e-04": 0.2009
+    },
+    "size_vs_fp32": 1.0
+  },
+  "fp16": {
+    "tflite": "out/recognizer_fp16.tflite",
+    "size_mb": 6.83,
+    "error": "tflite/kernels/conv.cc:360 input_type == kTfLiteFloat32 || input_type == kTfLiteUInt8 || input_type == kTfLiteInt8 || input_type == kTfLiteInt16 was not true.Node number 1 (CONV_2D) failed to prepare.",
+    "note": "could not load on CPU \u2014 likely a true-fp16 graph needing a GPU/NNAPI delegate; file size is valid, CPU runtime skipped",
+    "size_vs_fp32": 2.0
+  },
+  "int8_full": {
+    "tflite": "out/recognizer_int8_full.tflite",
+    "size_mb": 3.64,
+    "latency": {
+      "mean_ms": 30.96,
+      "p50_ms": 29.79,
+      "p95_ms": 37.31,
+      "p99_ms": 40.28,
+      "runs": 100,
+      "note": "desktop/CPU timing; not a phone number"
+    },
+    "accuracy": {
+      "n_pairs": 992,
+      "n_skipped": 8,
+      "n_genuine": 498,
+      "n_impostor": 494,
+      "best_accuracy": 0.502,
+      "best_threshold": 0.2424,
+      "EER": 0.4994,
+      "genuine_mean": 0.6988,
+      "impostor_mean": 0.6979,
+      "TAR@FAR=1e-02": 0.6024,
+      "thr@FAR=1e-02": 1.0,
+      "TAR@FAR=1e-03": 0.6024,
+      "thr@FAR=1e-03": 1.0,
+      "TAR@FAR=1e-04": 0.6024,
+      "thr@FAR=1e-04": 1.0
+    },
+    "size_vs_fp32": 3.75
+  },
+  "int16x8": {
+    "tflite": "out/recognizer_int16x8.tflite",
+    "size_mb": 3.64,
+    "latency": {
+      "mean_ms": 37.53,
+      "p50_ms": 37.61,
+      "p95_ms": 51.8,
+      "p99_ms": 56.33,
+      "runs": 100,
+      "note": "desktop/CPU timing; not a phone number"
+    },
+    "accuracy": {
+      "n_pairs": 992,
+      "n_skipped": 8,
+      "n_genuine": 498,
+      "n_impostor": 494,
+      "best_accuracy": 0.498,
+      "best_threshold": NaN,
+      "EER": 0.0,
+      "genuine_mean": NaN,
+      "impostor_mean": NaN,
+      "TAR@FAR=1e-02": 0.0,
+      "thr@FAR=1e-02": NaN,
+      "TAR@FAR=1e-03": 0.0,
+      "thr@FAR=1e-03": NaN,
+      "TAR@FAR=1e-04": 0.0,
+      "thr@FAR=1e-04": NaN
+    },
+    "size_vs_fp32": 3.75
+  }
+}

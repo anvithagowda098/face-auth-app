@@ -25,8 +25,9 @@ PRECISION_TAG = {
     "fp16": "float16",
     "int8_dynamic": "dynamic_range_quant",
     "int8_full": "full_integer_quant",
+    "int16x8": "integer_quant_with_int16_act",  # int8 weights + 16-bit activations
 }
-NEEDS_CALIB = {"int8_dynamic", "int8_full"}
+NEEDS_CALIB = {"int8_dynamic", "int8_full", "int16x8"}
 
 # insightface recognition preprocessing: RGB, (x-127.5)/127.5 -> [-1, 1]
 MEAN, STD = 127.5, 127.5
@@ -108,10 +109,19 @@ def export_precisions(precisions, out_dir, *, model=None, input_shape=None,
         for f in produced:
             print(f"      {f.name}  ({f.stat().st_size / 1e6:.2f} MB)")
 
+        # onnx2tf names files "<onnx_stem>_<variant>.tflite". Match the variant
+        # EXACTLY so e.g. 'full_integer_quant' doesn't also grab
+        # 'full_integer_quant_with_int16_act'.
+        onnx_stem = Path(onnx_path).stem
+
+        def variant_of(f):
+            s = f.stem
+            return s[len(onnx_stem) + 1:] if s.startswith(onnx_stem + "_") else s
+
         result = {}
         for prec in precisions:
             tag = PRECISION_TAG[prec]
-            match = next((f for f in produced if tag in f.name), None)
+            match = next((f for f in produced if variant_of(f) == tag), None)
             if match is None:
                 print(f"  [skip] {prec}: no '{tag}' file emitted on this onnx2tf version")
                 continue

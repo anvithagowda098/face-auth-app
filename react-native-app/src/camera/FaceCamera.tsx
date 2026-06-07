@@ -49,7 +49,7 @@ interface Props {
 const EYE_CLOSED = 0.1;
 const EYE_OPEN = 0.8;
 const SMILE_ON = 0.7;
-const YAW_DEG = 18;
+const YAW_DEG = 36;
 
 const targetYawMultiple = Platform.select<number>({
   ios: -1,
